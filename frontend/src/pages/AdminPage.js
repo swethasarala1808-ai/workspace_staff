@@ -10,10 +10,23 @@ export default function AdminPage() {
   const [tab, setTab] = useState('users');
   const [msg, setMsg] = useState('');
 
-  if (user.role !== 'admin') return <div className="container"><div className="card" style={{ textAlign: 'center', padding: 60 }}><h2>⛔ Admins only</h2></div></div>;
-
   const fetchUsers = () => axios.get(`${API}/users`).then(r => setUsers(r.data)).catch(() => {});
-  useEffect(() => { fetchUsers(); }, []);
+
+  // ✅ Hook MUST be called unconditionally — before any early return
+  useEffect(() => {
+    if (user?.role === 'admin') fetchUsers();
+  }, []);
+
+  if (user?.role !== 'admin') {
+    return (
+      <div className="container">
+        <div className="card" style={{ textAlign: 'center', padding: 60 }}>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>⛔</div>
+          <h2>Admins only</h2>
+        </div>
+      </div>
+    );
+  }
 
   const updateRole = async (id, role) => {
     await axios.put(`${API}/users/${id}`, { role });
@@ -38,7 +51,6 @@ export default function AdminPage() {
 
       {msg && <div className="card" style={{ marginBottom: 16, background: '#f0fdf4', color: '#16a34a', padding: '12px 16px' }}>{msg}</div>}
 
-      {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 16, marginBottom: 28 }}>
         {[
           { label: 'Total Users', value: users.length, color: '#1a1a2e', emoji: '👥' },
@@ -54,7 +66,6 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
         {['users', 'bizaxl', 'seria'].map(t => (
           <button key={t} onClick={() => setTab(t)}
