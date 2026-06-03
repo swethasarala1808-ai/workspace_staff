@@ -15,33 +15,33 @@ import SeriaPortal from './pages/SeriaPortal';
 import AdminPage from './pages/AdminPage';
 import Navbar from './components/Navbar';
 
-function PrivateRoute({ children, allowedCompany }) {
+function PrivateRoute({ children, onlyBizaxl }) {
   const { user, loading } = useAuth();
-  if (loading) return <div className="spinner" style={{ minHeight: '100vh' }} />;
-  if (!user) return <Navigate to="/" replace />;
-  if (allowedCompany && user.company !== allowedCompany) return <Navigate to={user.company === 'SERIA' ? '/seria' : '/dashboard'} replace />;
+  if (loading) return <div className="spinner" style={{minHeight:'100vh'}}/>;
+  if (!user) return <Navigate to="/" replace/>;
+  if (onlyBizaxl && user.company!=='BIZAXL') return <Navigate to="/seria" replace/>;
   return children;
 }
 
 function AppRoutes() {
   const { user, loading } = useAuth();
-  if (loading) return <div className="spinner" style={{ minHeight: '100vh' }} />;
+  if (loading) return <div className="spinner" style={{minHeight:'100vh'}}/>;
 
   return (
     <>
-      <Navbar />
+      <Navbar/>
       <Routes>
-        <Route path="/" element={user ? <Navigate to={user.company === 'SERIA' ? '/seria' : '/dashboard'} /> : <AuthPage />} />
-        <Route path="/seria" element={<PrivateRoute allowedCompany="SERIA"><SeriaPortal /></PrivateRoute>} />
-        <Route path="/dashboard" element={<PrivateRoute allowedCompany="BIZAXL"><Dashboard /></PrivateRoute>} />
-        <Route path="/chat" element={<PrivateRoute allowedCompany="BIZAXL"><ChatPage /></PrivateRoute>} />
-        <Route path="/email" element={<PrivateRoute allowedCompany="BIZAXL"><EmailPage /></PrivateRoute>} />
-        <Route path="/ideas" element={<PrivateRoute allowedCompany="BIZAXL"><IdeasPage /></PrivateRoute>} />
-        <Route path="/policies" element={<PrivateRoute allowedCompany="BIZAXL"><PoliciesPage /></PrivateRoute>} />
-        <Route path="/materials" element={<PrivateRoute><MaterialsPage /></PrivateRoute>} />
-        <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-        <Route path="/admin" element={<PrivateRoute><AdminPage /></PrivateRoute>} />
-        <Route path="*" element={<Navigate to="/" />} />
+        <Route path="/" element={user ? <Navigate to={user.company==='SERIA'?'/seria':'/dashboard'}/> : <AuthPage/>}/>
+        <Route path="/seria" element={<PrivateRoute><SeriaPortal/></PrivateRoute>}/>
+        <Route path="/dashboard" element={<PrivateRoute onlyBizaxl><Dashboard/></PrivateRoute>}/>
+        <Route path="/chat" element={<PrivateRoute onlyBizaxl><ChatPage/></PrivateRoute>}/>
+        <Route path="/email" element={<PrivateRoute onlyBizaxl><EmailPage/></PrivateRoute>}/>
+        <Route path="/ideas" element={<PrivateRoute onlyBizaxl><IdeasPage/></PrivateRoute>}/>
+        <Route path="/policies" element={<PrivateRoute onlyBizaxl><PoliciesPage/></PrivateRoute>}/>
+        <Route path="/materials" element={<PrivateRoute><MaterialsPage/></PrivateRoute>}/>
+        <Route path="/profile" element={<PrivateRoute><ProfilePage/></PrivateRoute>}/>
+        <Route path="/admin" element={<PrivateRoute><AdminPage/></PrivateRoute>}/>
+        <Route path="*" element={<Navigate to="/"/>}/>
       </Routes>
     </>
   );
@@ -50,9 +50,7 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
+      <AuthProvider><AppRoutes/></AuthProvider>
     </BrowserRouter>
   );
 }

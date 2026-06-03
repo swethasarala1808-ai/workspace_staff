@@ -17,7 +17,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token) {
-      axios.get(`${API}/auth/me`).then(r => setUser(r.data)).catch(() => localStorage.removeItem('token')).finally(() => setLoading(false));
+      axios.get(`${API}/auth/me`)
+        .then(r => setUser(r.data))
+        .catch(() => localStorage.removeItem('token'))
+        .finally(() => setLoading(false));
     } else setLoading(false);
   }, []);
 
@@ -35,10 +38,7 @@ export function AuthProvider({ children }) {
     return r.data.user;
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
-  };
+  const logout = () => { localStorage.removeItem('token'); setUser(null); };
 
   const updateProfile = async (data) => {
     const r = await axios.put(`${API}/auth/profile`, data);

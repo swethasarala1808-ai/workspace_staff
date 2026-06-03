@@ -12,7 +12,12 @@ app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "dev-secret-change-in-pro
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 jwt = JWTManager(app)
 
-# Register blueprints
+# Serve uploaded files
+@app.route("/static/uploads/<path:filename>")
+def serve_upload(filename):
+    upload_dir = os.path.join(os.path.dirname(__file__), "static", "uploads")
+    return send_from_directory(upload_dir, filename)
+
 from routes.auth import auth_bp
 from routes.chat import chat_bp
 from routes.ideas import ideas_bp
@@ -31,17 +36,22 @@ app.register_blueprint(users_bp, url_prefix="/api")
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status": "ok", "app": "WorkSpace Staff"}), 200
+    return jsonify({"status": "ok"}), 200
 
-# Serve React frontend
+# React catch-all — must come LAST
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve(path):
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    index = os.path.join(app.static_folder, "index.html")
+    # Don't intercept /api or /static/uploads
+    if path.startswith("api/") or path.startswith("static/uploads/"):
+        return jsonify({"error": "Not found"}), 404
+    build_dir = app.static_folder
+    full = os.path.join(build_dir, path)
+    if path and os.path.exists(full):
+        return send_from_directory(build_dir, path)
+    index = os.path.join(build_dir, "index.html")
     if os.path.exists(index):
-        return send_from_directory(app.static_folder, "index.html")
+        return send_from_directory(build_dir, "index.html")
     return jsonify({"error": "Frontend not built. Run: cd frontend && npm install && npm run build"}), 404
 
 if __name__ == "__main__":
