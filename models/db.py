@@ -17,3 +17,7 @@ solutions_col = db["solutions"]
 
 users_col.create_index("email", unique=True)
 messages_col.create_index([("channel", 1), ("created_at", -1)])
+
+meetings_col = db["meetings"]
+meetings_col.create_index("start_dt")
+drive_col = db["drive_files"]
