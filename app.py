@@ -6,18 +6,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-BUILD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "build")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BUILD_DIR = os.path.join(BASE_DIR, "static", "build")
+
+# On Vercel, filesystem is read-only except /tmp
+IS_VERCEL = os.environ.get("VERCEL", False)
+UPLOAD_DIR = "/tmp/uploads" if IS_VERCEL else os.path.join(BASE_DIR, "static", "uploads")
+DRIVE_DIR  = "/tmp/drive"   if IS_VERCEL else os.path.join(BASE_DIR, "static", "drive")
+
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(DRIVE_DIR,  exist_ok=True)
 
 app = Flask(__name__, static_folder=None)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "dev-secret-change-in-production")
 
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 jwt = JWTManager(app)
-
-UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "uploads")
-DRIVE_DIR  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "drive")
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(DRIVE_DIR, exist_ok=True)
 
 @app.route("/static/uploads/<path:filename>")
 def serve_upload(filename):
@@ -54,21 +58,21 @@ app.register_blueprint(meetings_bp,  url_prefix="/api")
 
 @app.route("/api/health")
 def health():
-    return jsonify({"status":"ok"}), 200
+    return jsonify({"status": "ok", "vercel": bool(IS_VERCEL)}), 200
 
-@app.route("/", defaults={"path":""})
+@app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_react(path):
     if path.startswith("api/") or path.startswith("static/"):
-        return jsonify({"error":"Not found"}), 404
+        return jsonify({"error": "Not found"}), 404
     index_path = os.path.join(BUILD_DIR, "index.html")
     if os.path.exists(index_path):
         return send_file(index_path)
-    return jsonify({"error":"Frontend not built"}), 404
+    return jsonify({"error": "Frontend not built"}), 404
 
 if __name__ == "__main__":
     port = int(os.getenv("FLASK_PORT", 5000))
-    debug = os.getenv("FLASK_DEBUG","True").lower() == "true"
+    debug = os.getenv("FLASK_DEBUG", "True").lower() == "true"
     print(f"\n🚀 WorkSpace Staff running at http://localhost:{port}")
     print(f"📡 Share with office: http://YOUR_LOCAL_IP:{port}\n")
     app.run(host="0.0.0.0", port=port, debug=debug)
