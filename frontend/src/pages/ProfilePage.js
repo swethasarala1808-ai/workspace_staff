@@ -10,101 +10,110 @@ export default function ProfilePage() {
   const [emailForm, setEmailForm] = useState({ hostinger_email:user.hostinger_email||'', hostinger_password_plain:'' });
   const [msg, setMsg] = useState('');
   const [saving, setSaving] = useState(false);
-  const deptColor = DEPT_COLORS[user.department] || '#14f1b1';
+  const deptColor = DEPT_COLORS[user.department] || '#14F1B1';
 
   const saveProfile = async (e) => {
     e.preventDefault(); setSaving(true);
-    try { await updateProfile(form); setMsg('Profile updated ✅'); setTimeout(()=>setMsg(''),3000); }
-    catch { setMsg('Failed to update'); }
+    try { await updateProfile(form); setMsg('Profile updated successfully'); setTimeout(()=>setMsg(''),3000); }
+    catch { setMsg('Update failed'); }
     finally { setSaving(false); }
   };
 
   const saveEmail = async (e) => {
     e.preventDefault(); setSaving(true);
-    try { await updateProfile(emailForm); setMsg('Email settings saved ✅'); setTimeout(()=>setMsg(''),3000); }
-    catch { setMsg('Failed'); }
+    try { await updateProfile(emailForm); setMsg('Email settings saved'); setTimeout(()=>setMsg(''),3000); }
+    catch { setMsg('Failed to save'); }
     finally { setSaving(false); }
   };
 
   return (
-    <div className="container">
-      <div className="page-header"><h1 className="page-title">👤 Profile & Settings</h1></div>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Profile & Settings</h1>
+        <p className="page-subtitle">Manage your account and preferences</p>
+      </div>
+
       {msg && <div className="alert alert-success">{msg}</div>}
 
-      <div className="grid-2" style={{gap:24}}>
+      <div className="grid-2" style={{gap:24, alignItems:'start'}}>
         <div>
-          {/* Avatar */}
-          <div className="card" style={{textAlign:'center',marginBottom:20}}>
-            <div style={{width:80,height:80,borderRadius:'50%',background:deptColor,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              color:'white',fontWeight:800,fontSize:32,margin:'0 auto 16px',
-              boxShadow:`0 0 0 4px ${deptColor}30`}}>
+          {/* Avatar card */}
+          <div className="card" style={{textAlign:'center', marginBottom:20, padding:32}}>
+            <div style={{width:72, height:72, borderRadius:'50%', background:deptColor,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              color:'white', fontWeight:800, fontSize:28, margin:'0 auto 16px'}}>
               {user.name.charAt(0).toUpperCase()}
             </div>
-            <h2 style={{fontWeight:800,fontSize:20,marginBottom:4,color:'var(--navy)'}}>{user.name}</h2>
-            <p style={{color:'var(--muted)',marginBottom:12}}>{user.email}</p>
-            <div style={{display:'flex',gap:8,justifyContent:'center',flexWrap:'wrap'}}>
-              <span style={{background:'var(--green-glow)',color:'var(--navy)',padding:'4px 14px',
-                borderRadius:20,fontSize:13,fontWeight:600,border:'1px solid var(--green)'}}>{user.company}</span>
-              {user.department && <span style={{background:deptColor+'20',color:deptColor,
-                padding:'4px 14px',borderRadius:20,fontSize:13,fontWeight:600}}>{user.department}</span>}
-              <span style={{background:'#fee2e2',color:'#dc2626',padding:'4px 14px',
-                borderRadius:20,fontSize:13,fontWeight:600}}>{user.role}</span>
+            <h2 style={{fontWeight:700, fontSize:18, marginBottom:4}}>{user.name}</h2>
+            <p style={{color:'var(--gray-400)', fontSize:13, marginBottom:12}}>{user.email}</p>
+            <div style={{display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap'}}>
+              <span className="badge badge-gray">{user.company}</span>
+              {user.department && <span className="badge" style={{background:deptColor+'15', color:deptColor}}>{user.department}</span>}
+              <span className="badge badge-blue">{user.role}</span>
             </div>
           </div>
 
           {/* Edit profile */}
           <div className="card">
-            <h3 style={{fontWeight:700,marginBottom:20}}>Edit Profile</h3>
+            <h3 style={{fontWeight:700, marginBottom:20, fontSize:15}}>Edit Profile</h3>
             <form onSubmit={saveProfile}>
-              <div className="form-group"><label className="label">Full Name</label>
-                <input className="input" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required/></div>
-              <div className="form-group"><label className="label">Phone</label>
-                <input className="input" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))}/></div>
+              <div className="form-group">
+                <label className="label">Full Name</label>
+                <input className="input" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required/>
+              </div>
+              <div className="form-group">
+                <label className="label">Phone</label>
+                <input className="input" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))}/>
+              </div>
               {user.company==='BIZAXL' && (
-                <div className="form-group"><label className="label">Department</label>
+                <div className="form-group">
+                  <label className="label">Department</label>
                   <select className="select" value={form.department} onChange={e=>setForm(f=>({...f,department:e.target.value}))}>
-                    {DEPARTMENTS.map(d=><option key={d} value={d}>{d}</option>)}
+                    {DEPARTMENTS.map(d=><option key={d}>{d}</option>)}
                   </select>
                 </div>
               )}
               <button type="submit" className="btn btn-primary" disabled={saving}>
-                {saving?'Saving...':'Save Changes'}
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </form>
           </div>
         </div>
 
         <div>
-          {/* Email */}
+          {/* Email settings */}
           {user.company==='BIZAXL' && (
             <div className="card" style={{marginBottom:20}}>
-              <h3 style={{fontWeight:700,marginBottom:6}}>📧 Hostinger Email</h3>
-              <p style={{color:'var(--muted)',fontSize:13,marginBottom:20}}>
-                {user.hostinger_email ? `Connected: ${user.hostinger_email}` : 'Not connected yet'}
+              <h3 style={{fontWeight:700, marginBottom:4, fontSize:15}}>Email Integration</h3>
+              <p style={{color:'var(--gray-400)', fontSize:13, marginBottom:20}}>
+                {user.hostinger_email ? `Connected: ${user.hostinger_email}` : 'Connect your Hostinger email'}
               </p>
               <form onSubmit={saveEmail}>
-                <div className="form-group"><label className="label">Email Address</label>
+                <div className="form-group">
+                  <label className="label">Email Address</label>
                   <input className="input" type="email" placeholder="you@yourdomain.com"
-                    value={emailForm.hostinger_email} onChange={e=>setEmailForm(f=>({...f,hostinger_email:e.target.value}))}/></div>
-                <div className="form-group"><label className="label">Password</label>
-                  <input className="input" type="password" placeholder="Leave blank to keep current"
-                    value={emailForm.hostinger_password_plain} onChange={e=>setEmailForm(f=>({...f,hostinger_password_plain:e.target.value}))}/></div>
-                <div style={{background:'#f0f4ff',borderRadius:8,padding:'10px 14px',marginBottom:14,fontSize:13,color:'var(--muted)'}}>
-                  📥 IMAP: mail.hostinger.com:993 · 📤 SMTP: mail.hostinger.com:465
+                    value={emailForm.hostinger_email} onChange={e=>setEmailForm(f=>({...f,hostinger_email:e.target.value}))}/>
                 </div>
-                <button type="submit" className="btn btn-primary" disabled={saving}>🔗 Save Email</button>
+                <div className="form-group">
+                  <label className="label">Password</label>
+                  <input className="input" type="password" placeholder="Leave blank to keep current"
+                    value={emailForm.hostinger_password_plain} onChange={e=>setEmailForm(f=>({...f,hostinger_password_plain:e.target.value}))}/>
+                </div>
+                <div style={{background:'var(--gray-100)', borderRadius:'var(--radius)', padding:'10px 14px', marginBottom:14, fontSize:13, color:'var(--gray-400)'}}>
+                  IMAP: mail.hostinger.com:993 · SMTP: mail.hostinger.com:465
+                </div>
+                <button type="submit" className="btn btn-primary" disabled={saving}>Save Email Settings</button>
               </form>
             </div>
           )}
 
-          {/* Info */}
+          {/* Account info */}
           <div className="card">
-            <h3 style={{fontWeight:700,marginBottom:16}}>Account Info</h3>
-            {[['Email',user.email],['Company',user.company],['Role',user.role],['Phone',user.phone||'Not set']].map(([k,v])=>(
-              <div key={k} style={{display:'flex',justifyContent:'space-between',padding:'10px 0',borderBottom:'1px solid var(--border)'}}>
-                <span style={{color:'var(--muted)',fontSize:14}}>{k}</span>
-                <span style={{fontWeight:600,fontSize:14,color:'var(--navy)'}}>{v}</span>
+            <h3 style={{fontWeight:700, marginBottom:16, fontSize:15}}>Account Information</h3>
+            {[['Email', user.email], ['Company', user.company], ['Role', user.role], ['Phone', user.phone||'Not set']].map(([k,v])=>(
+              <div key={k} style={{display:'flex', justifyContent:'space-between', padding:'10px 0', borderBottom:'1px solid var(--border)'}}>
+                <span style={{color:'var(--gray-400)', fontSize:14}}>{k}</span>
+                <span style={{fontWeight:600, fontSize:14}}>{v}</span>
               </div>
             ))}
           </div>

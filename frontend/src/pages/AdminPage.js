@@ -13,19 +13,17 @@ export default function AdminPage() {
   const fetchUsers = () => axios.get(`${API}/users`).then(r=>setUsers(r.data)).catch(()=>{});
   useEffect(()=>{ if(user?.role==='admin') fetchUsers(); },[]);
 
-  if (user?.role!=='admin') return (
-    <div className="container">
-      <div className="card" style={{textAlign:'center',padding:60}}>
-        <div style={{fontSize:48,marginBottom:12}}>⛔</div>
-        <h2 style={{color:'var(--navy)'}}>Admins only</h2>
-      </div>
+  if (user?.role !== 'admin') return (
+    <div className="page-container">
+      <div className="card"><div className="empty-state"><div className="empty-state-icon">🔒</div><h3>Admin access required</h3></div></div>
     </div>
   );
 
   const updateRole = async (id, role) => {
-    await axios.put(`${API}/users/${id}`,{role});
-    setMsg('Updated ✅'); fetchUsers(); setTimeout(()=>setMsg(''),2000);
+    await axios.put(`${API}/users/${id}`, { role });
+    setMsg('Updated'); fetchUsers(); setTimeout(()=>setMsg(''),2000);
   };
+
   const deleteUser = async (id, name) => {
     if (!window.confirm(`Delete ${name}?`)) return;
     await axios.delete(`${API}/users/${id}`);
@@ -33,71 +31,57 @@ export default function AdminPage() {
   };
 
   const bizaxl = users.filter(u=>u.company==='BIZAXL');
-  const seria = users.filter(u=>u.company==='SERIA');
+  const seria  = users.filter(u=>u.company==='SERIA');
 
   return (
-    <div className="container">
-      <div className="page-header"><h1 className="page-title">⚙️ Admin Panel</h1>
-        <p className="page-sub">{users.length} total users</p></div>
+    <div className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Admin Panel</h1>
+        <p className="page-subtitle">Manage users, roles and access</p>
+      </div>
+
       {msg && <div className="alert alert-success">{msg}</div>}
 
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:14,marginBottom:28}}>
-        {[['👥','Total',users.length,'#05133c'],['🏢','BIZAXL',bizaxl.length,'#14f1b1'],
-          ['🏷️','SERIA',seria.length,'#f59e0b'],['🔑','Admins',users.filter(u=>u.role==='admin').length,'#ef4444']
-        ].map(([emoji,label,val,color])=>(
-          <div key={label} className="card" style={{textAlign:'center',padding:18}}>
-            <div style={{fontSize:26,marginBottom:4}}>{emoji}</div>
-            <div style={{fontSize:26,fontWeight:800,color}}>{val}</div>
-            <div style={{fontSize:12,color:'var(--muted)'}}>{label}</div>
+      {/* Stats */}
+      <div className="grid-4" style={{marginBottom:24}}>
+        {[['Total Users',users.length,'var(--navy)'],['Bizaxl',bizaxl.length,'#059669'],['Seria',seria.length,'#d97706'],['Admins',users.filter(u=>u.role==='admin').length,'#7c3aed']].map(([l,v,c])=>(
+          <div key={l} className="card card-sm">
+            <div style={{fontSize:26, fontWeight:800, color:c}}>{v}</div>
+            <div style={{fontSize:12, color:'var(--gray-400)', marginTop:2}}>{l}</div>
           </div>
         ))}
       </div>
 
-      <div className="tab-bar" style={{marginBottom:20}}>
-        {[['users','👥 All'],['bizaxl','🏢 BIZAXL'],['seria','🏷️ SERIA']].map(([id,label])=>(
-          <button key={id} className={`tab-btn${tab===id?' active':''}`} onClick={()=>setTab(id)}>{label}</button>
+      <div className="tabs">
+        {[['users','All Users'],['bizaxl','Bizaxl'],['seria','Seria']].map(([id,label])=>(
+          <button key={id} className={`tab${tab===id?' active':''}`} onClick={()=>setTab(id)}>{label}</button>
         ))}
       </div>
 
-      <div className="card" style={{padding:0,overflow:'hidden'}}>
-        <table style={{width:'100%',borderCollapse:'collapse'}}>
-          <thead>
-            <tr style={{background:'#f8faff'}}>
-              {['Name','Email','Company','Department','Role','Actions'].map(h=>(
-                <th key={h} style={{padding:'12px 16px',textAlign:'left',fontSize:12,fontWeight:700,
-                  color:'var(--muted)',borderBottom:'1px solid var(--border)',textTransform:'uppercase',letterSpacing:'0.5px'}}>{h}</th>
-              ))}
-            </tr>
-          </thead>
+      <div className="card" style={{padding:0, overflow:'hidden'}}>
+        <table className="table">
+          <thead><tr><th>Name</th><th>Email</th><th>Company</th><th>Department</th><th>Role</th><th>Actions</th></tr></thead>
           <tbody>
-            {(tab==='users'?users:tab==='bizaxl'?bizaxl:seria).map((u,i)=>(
-              <tr key={u.id} style={{borderBottom:'1px solid var(--border)',background:i%2===0?'white':'#fafcff'}}>
-                <td style={{padding:'12px 16px',fontWeight:600,fontSize:14,color:'var(--navy)'}}>{u.name}</td>
-                <td style={{padding:'12px 16px',fontSize:13,color:'var(--muted)'}}>{u.email}</td>
-                <td style={{padding:'12px 16px'}}>
-                  <span style={{background:'var(--green-glow)',color:'var(--navy)',
-                    padding:'3px 10px',borderRadius:20,fontSize:12,fontWeight:600,border:'1px solid var(--green)'}}>{u.company}</span>
-                </td>
-                <td style={{padding:'12px 16px'}}>
-                  {u.department && <span style={{background:(DEPT_COLORS[u.department]||'#666')+'20',
-                    color:DEPT_COLORS[u.department]||'#666',padding:'3px 10px',borderRadius:20,fontSize:12,fontWeight:600}}>{u.department}</span>}
-                </td>
-                <td style={{padding:'12px 16px'}}>
-                  {u.id!==user.id
-                    ? <select className="select" style={{width:'auto',fontSize:12,padding:'4px 8px'}}
-                        value={u.role} onChange={e=>updateRole(u.id,e.target.value)}>
-                        {['employee','admin','marketing','director'].map(r=><option key={r} value={r}>{r}</option>)}
+            {(tab==='users'?users:tab==='bizaxl'?bizaxl:seria).map(u=>(
+              <tr key={u.id}>
+                <td style={{fontWeight:600}}>{u.name}</td>
+                <td style={{color:'var(--gray-400)', fontSize:13}}>{u.email}</td>
+                <td><span className="badge badge-gray">{u.company}</span></td>
+                <td>{u.department && <span className="badge" style={{background:(DEPT_COLORS[u.department]||'#666')+'15', color:DEPT_COLORS[u.department]||'#666'}}>{u.department}</span>}</td>
+                <td>
+                  {u.id !== user.id
+                    ? <select className="select" style={{width:'auto', height:32, fontSize:12, padding:'4px 8px'}}
+                        value={u.role} onChange={e=>updateRole(u.id, e.target.value)}>
+                        {['employee','admin','marketing','director'].map(r=><option key={r}>{r}</option>)}
                       </select>
-                    : <span style={{fontSize:13,fontWeight:600,color:'#dc2626'}}>admin (you)</span>}
+                    : <span className="badge badge-blue">admin (you)</span>}
                 </td>
-                <td style={{padding:'12px 16px'}}>
-                  {u.id!==user.id && <button className="btn btn-danger btn-sm" onClick={()=>deleteUser(u.id,u.name)}>🗑</button>}
-                </td>
+                <td>{u.id !== user.id && <button className="btn btn-danger btn-sm" onClick={()=>deleteUser(u.id, u.name)}>Delete</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
-        {users.length===0 && <div style={{padding:40,textAlign:'center',color:'var(--muted)'}}>No users yet.</div>}
+        {users.length===0 && <div className="empty-state"><h3>No users yet</h3></div>}
       </div>
     </div>
   );

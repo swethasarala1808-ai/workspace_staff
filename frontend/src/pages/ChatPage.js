@@ -13,12 +13,11 @@ export default function ChatPage() {
   const bottomRef = useRef(null);
 
   const channels = [
-    { id:'company', label:'🌐 Company', desc:'All BIZAXL staff' },
-    ...(user.department ? [{ id:`dept_${user.department.toLowerCase()}`, label:`🏷️ ${user.department}`, desc:'Your team only' }] : []),
+    { id:'company', label:'Company', desc:'All Bizaxl staff' },
+    ...(user.department ? [{ id:`dept_${user.department.toLowerCase()}`, label:user.department, desc:'Your team only' }] : []),
   ];
 
   const fetchMessages = () => axios.get(`${API}/chat/messages/${channel}`).then(r=>setMessages(r.data)).catch(()=>{});
-
   useEffect(()=>{ fetchMessages(); },[channel]);
   useEffect(()=>{ const i=setInterval(fetchMessages,5000); return ()=>clearInterval(i); },[channel]);
   useEffect(()=>{ bottomRef.current?.scrollIntoView({behavior:'smooth'}); },[messages]);
@@ -27,75 +26,64 @@ export default function ChatPage() {
     e.preventDefault();
     if (!text.trim()) return;
     setSending(true);
-    try { await axios.post(`${API}/chat/messages`,{channel,text}); setText(''); fetchMessages(); }
-    catch(err) { alert(err.response?.data?.error||'Failed to send'); }
+    try { await axios.post(`${API}/chat/messages`, { channel, text }); setText(''); fetchMessages(); }
+    catch(err) { alert(err.response?.data?.error||'Failed'); }
     finally { setSending(false); }
   };
 
-  const deptColor = (dept) => DEPT_COLORS[dept] || '#14f1b1';
+  const deptColor = dept => DEPT_COLORS[dept] || '#14F1B1';
 
   return (
-    <div style={{height:'calc(100vh - 62px)', display:'flex', gap:0}}>
-      {/* Sidebar */}
-      <div style={{width:220, background:'var(--navy)', flexShrink:0, display:'flex', flexDirection:'column'}}>
-        <div style={{padding:'18px 16px', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
-          <p style={{color:'rgba(255,255,255,0.4)', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'1px'}}>
-            Channels
-          </p>
+    <div style={{display:'flex', height:'calc(100vh - 56px)'}}>
+      {/* Channel list */}
+      <div style={{width:200, background:'white', borderRight:'1px solid var(--border)', flexShrink:0, display:'flex', flexDirection:'column'}}>
+        <div style={{padding:'14px 16px', borderBottom:'1px solid var(--border)'}}>
+          <div style={{fontSize:11, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--gray-400)'}}>Channels</div>
         </div>
         {channels.map(ch=>(
           <div key={ch.id} onClick={()=>setChannel(ch.id)}
-            style={{padding:'14px 16px', cursor:'pointer',
-              background: channel===ch.id ? 'rgba(20,241,177,0.1)' : 'transparent',
-              borderLeft: channel===ch.id ? '3px solid #14f1b1' : '3px solid transparent',
-              transition:'all 0.15s'}}>
-            <div style={{fontWeight:600, fontSize:14, color: channel===ch.id ? '#14f1b1' : 'rgba(255,255,255,0.75)'}}>{ch.label}</div>
-            <div style={{fontSize:12, color:'rgba(255,255,255,0.35)', marginTop:2}}>{ch.desc}</div>
+            style={{padding:'12px 16px', cursor:'pointer', borderLeft:`2px solid ${channel===ch.id?'var(--mint)':'transparent'}`, background:channel===ch.id?'rgba(20,241,177,0.05)':'transparent', transition:'all 0.15s'}}>
+            <div style={{fontWeight:600, fontSize:13, color:channel===ch.id?'var(--navy)':'var(--gray-400)'}}># {ch.label}</div>
+            <div style={{fontSize:11, color:'var(--gray-400)', marginTop:1}}>{ch.desc}</div>
           </div>
         ))}
         <div style={{flex:1}}/>
-        <div style={{padding:'14px 16px', borderTop:'1px solid rgba(255,255,255,0.08)'}}>
-          <p style={{color:'rgba(255,255,255,0.35)', fontSize:11}}>Auto-refreshes every 5s</p>
+        <div style={{padding:'10px 14px', borderTop:'1px solid var(--border)'}}>
+          <div style={{fontSize:11, color:'var(--gray-400)'}}>Refreshes every 5s</div>
         </div>
       </div>
 
       {/* Chat area */}
-      <div style={{flex:1, display:'flex', flexDirection:'column', background:'var(--bg)'}}>
+      <div style={{flex:1, display:'flex', flexDirection:'column', background:'var(--gray-100)'}}>
         {/* Header */}
-        <div style={{background:'white', padding:'14px 20px', borderBottom:'1px solid var(--border)',
-          display:'flex', alignItems:'center', gap:10}}>
-          <span style={{fontSize:20}}>{channels.find(c=>c.id===channel)?.label.split(' ')[0]}</span>
+        <div style={{background:'white', padding:'12px 20px', borderBottom:'1px solid var(--border)', display:'flex', alignItems:'center', gap:10}}>
           <div>
-            <div style={{fontWeight:700, color:'var(--navy)'}}>{channels.find(c=>c.id===channel)?.label.split(' ').slice(1).join(' ')}</div>
-            <div style={{fontSize:12, color:'var(--muted)'}}>{channels.find(c=>c.id===channel)?.desc}</div>
+            <div style={{fontWeight:700, color:'var(--navy)'}}># {channels.find(c=>c.id===channel)?.label}</div>
+            <div style={{fontSize:12, color:'var(--gray-400)'}}>{channels.find(c=>c.id===channel)?.desc}</div>
           </div>
         </div>
 
         {/* Messages */}
         <div style={{flex:1, overflowY:'auto', padding:'16px 20px'}}>
           {messages.length===0 ? (
-            <div style={{textAlign:'center', color:'var(--muted)', marginTop:60}}>
-              <div style={{fontSize:48, marginBottom:12}}>💬</div>
-              <p>No messages yet. Say hi!</p>
+            <div style={{textAlign:'center', color:'var(--gray-400)', marginTop:60}}>
+              <p style={{fontWeight:500}}>No messages yet</p>
+              <p style={{fontSize:13}}>Start the conversation</p>
             </div>
-          ) : messages.map((m,i) => {
+          ) : messages.map((m,i)=>{
             const isMe = m.sender_name===user.name;
             return (
-              <div key={i} style={{marginBottom:14, display:'flex', flexDirection:isMe?'row-reverse':'row', gap:10}}>
-                <div style={{width:36,height:36,borderRadius:'50%',background:deptColor(m.sender_dept),
-                  display:'flex',alignItems:'center',justifyContent:'center',color:'white',
-                  fontWeight:800,fontSize:14,flexShrink:0}}>
-                  {m.sender_name.charAt(0)}
+              <div key={i} style={{marginBottom:12, display:'flex', flexDirection:isMe?'row-reverse':'row', gap:10}}>
+                <div className="avatar" style={{width:32, height:32, fontSize:12, background:deptColor(m.sender_dept), color:'white', flexShrink:0}}>
+                  {m.sender_name?.charAt(0)}
                 </div>
                 <div style={{maxWidth:'70%'}}>
-                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:4,flexDirection:isMe?'row-reverse':'row'}}>
-                    <span style={{fontWeight:600,fontSize:13}}>{m.sender_name}</span>
-                    {m.sender_dept && <span style={{fontSize:11,background:'#f3f4f6',padding:'2px 8px',borderRadius:20,color:deptColor(m.sender_dept),fontWeight:600}}>{m.sender_dept}</span>}
-                    <span style={{fontSize:11,color:'var(--muted)'}}>{new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+                  <div style={{display:'flex', gap:8, alignItems:'center', marginBottom:3, flexDirection:isMe?'row-reverse':'row'}}>
+                    <span style={{fontWeight:600, fontSize:13}}>{m.sender_name}</span>
+                    {m.sender_dept && <span className="badge badge-gray" style={{fontSize:10}}>{m.sender_dept}</span>}
+                    <span style={{fontSize:11, color:'var(--gray-400)'}}>{new Date(m.created_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
                   </div>
-                  <div style={{background:isMe?'var(--navy)':'white',color:isMe?'#14f1b1':'var(--text)',
-                    padding:'10px 14px',borderRadius:isMe?'16px 16px 4px 16px':'16px 16px 16px 4px',
-                    fontSize:14,lineHeight:1.5,boxShadow:'0 1px 4px rgba(0,0,0,0.07)'}}>
+                  <div style={{background:isMe?'var(--navy)':'white', color:isMe?'white':'var(--navy)', padding:'10px 14px', borderRadius:isMe?'12px 12px 2px 12px':'12px 12px 12px 2px', fontSize:14, lineHeight:1.5, boxShadow:'var(--shadow)'}}>
                     {m.text}
                   </div>
                 </div>
@@ -106,11 +94,10 @@ export default function ChatPage() {
         </div>
 
         {/* Input */}
-        <div style={{background:'white', padding:'14px 20px', borderTop:'1px solid var(--border)'}}>
-          <form onSubmit={send} style={{display:'flex', gap:10}}>
-            <input className="input" placeholder="Type a message..." value={text}
-              onChange={e=>setText(e.target.value)} style={{flex:1}}/>
-            <button type="submit" className="btn btn-primary" disabled={sending||!text.trim()}>Send →</button>
+        <div style={{background:'white', padding:'12px 20px', borderTop:'1px solid var(--border)'}}>
+          <form onSubmit={send} style={{display:'flex', gap:8}}>
+            <input className="input" placeholder={`Message #${channels.find(c=>c.id===channel)?.label}`} value={text} onChange={e=>setText(e.target.value)} style={{flex:1}}/>
+            <button type="submit" className="btn btn-primary" disabled={sending||!text.trim()}>Send</button>
           </form>
         </div>
       </div>
