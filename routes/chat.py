@@ -9,8 +9,9 @@ chat_bp = Blueprint("chat", __name__)
 def serialize_msg(m):
     return {
         "id": str(m["_id"]),
-        "sender_name": m.get("sender_name", ""),
-        "sender_dept": m.get("sender_dept", ""),
+        "sender_id": m.get("sender_id",""),
+        "sender_name": m.get("sender_name",""),
+        "sender_dept": m.get("sender_dept",""),
         "channel": m["channel"],
         "text": m["text"],
         "created_at": m["created_at"].isoformat(),
@@ -21,16 +22,11 @@ def serialize_msg(m):
 def get_messages(channel):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
-    if not user:
-        return jsonify({"error": "Unauthorized"}), 401
-
-    # Department channel — only same dept
     if channel.startswith("dept_"):
-        dept = channel.replace("dept_", "")
-        if user.get("department", "").lower() != dept.lower() and user.get("role") != "admin":
-            return jsonify({"error": "Forbidden"}), 403
-
-    msgs = list(messages_col.find({"channel": channel}).sort("created_at", 1).limit(100))
+        dept = channel.replace("dept_","")
+        if user.get("department","").lower() != dept.lower() and user.get("role") != "admin":
+            return jsonify({"error":"Forbidden"}), 403
+    msgs = list(messages_col.find({"channel": channel}).sort("created_at",1).limit(200))
     return jsonify([serialize_msg(m) for m in msgs]), 200
 
 @chat_bp.route("/messages", methods=["POST"])
@@ -39,21 +35,32 @@ def send_message():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
-    channel = data.get("channel", "company")
-
+    channel = data.get("channel","company")
     if channel.startswith("dept_"):
-        dept = channel.replace("dept_", "")
-        if user.get("department", "").lower() != dept.lower() and user.get("role") != "admin":
-            return jsonify({"error": "Forbidden"}), 403
-
+        dept = channel.replace("dept_","")
+        if user.get("department","").lower() != dept.lower() and user.get("role") != "admin":
+            return jsonify({"error":"Forbidden"}), 403
     msg = {
-        "sender_id": str(uid),
+        "sender_id": uid,
         "sender_name": user["name"],
-        "sender_dept": user.get("department", ""),
+        "sender_dept": user.get("department",""),
         "channel": channel,
-        "text": data.get("text", ""),
+        "text": data.get("text",""),
         "created_at": datetime.datetime.utcnow(),
     }
     result = messages_col.insert_one(msg)
     msg["_id"] = result.inserted_id
     return jsonify(serialize_msg(msg)), 201
+
+@chat_bp.route("/messages/<msg_id>", methods=["DELETE"])
+@jwt_required()
+def delete_message(msg_id):
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    msg = messages_col.find_one({"_id": ObjectId(msg_id)})
+    if not msg:
+        return jsonify({"error":"Not found"}), 404
+    if msg.get("sender_id") != uid and user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    messages_col.delete_one({"_id": ObjectId(msg_id)})
+    return jsonify({"ok":True}), 200

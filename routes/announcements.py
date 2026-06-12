@@ -60,3 +60,29 @@ def delete_announcement(aid):
         return jsonify({"error":"Forbidden"}), 403
     ann_col.delete_one({"_id": ObjectId(aid)})
     return jsonify({"ok":True}), 200
+
+# ── Daily quote override ──────────────────────────────────
+quotes_col = db["daily_quotes"]
+
+@announcements_bp.route("/daily_quote", methods=["GET"])
+@jwt_required()
+def get_daily_quote():
+    from datetime import datetime
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    q = quotes_col.find_one({"date": today})
+    if q:
+        return jsonify({"text": q["text"], "attr": q["attr"], "custom": True}), 200
+    return jsonify({"custom": False}), 200
+
+@announcements_bp.route("/daily_quote", methods=["POST"])
+@jwt_required()
+def set_daily_quote():
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    if user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    from datetime import datetime
+    data = request.json
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    quotes_col.update_one({"date": today}, {"$set": {"text": data["text"], "attr": data.get("attr",""), "date": today}}, upsert=True)
+    return jsonify({"ok": True}), 200

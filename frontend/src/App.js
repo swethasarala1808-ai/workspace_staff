@@ -18,6 +18,7 @@ import MeetingsPage  from './pages/MeetingsPage';
 import LeadsPage     from './pages/LeadsPage';
 import QuickLinksPage from './pages/QuickLinksPage';
 import AboutPage     from './pages/AboutPage';
+import OrgChartPage  from './pages/OrgChartPage';
 import Sidebar       from './components/Sidebar';
 
 function PrivateRoute({ children, onlyBizaxl }) {
@@ -40,13 +41,10 @@ function BizaxlLayout({ children }) {
 function AppRoutes() {
   const { user, loading } = useAuth();
   if (loading) return <div className="spinner" style={{minHeight:'100vh'}}/>;
-
   return (
     <Routes>
       <Route path="/" element={user ? <Navigate to={user.company==='SERIA'?'/seria':'/dashboard'}/> : <AuthPage/>}/>
       <Route path="/seria" element={<PrivateRoute><SeriaPortal/></PrivateRoute>}/>
-
-      {/* Bizaxl routes with sidebar */}
       <Route path="/dashboard"  element={<PrivateRoute onlyBizaxl><BizaxlLayout><Dashboard/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/drive"      element={<PrivateRoute onlyBizaxl><BizaxlLayout><DrivePage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/meetings"   element={<PrivateRoute onlyBizaxl><BizaxlLayout><MeetingsPage/></BizaxlLayout></PrivateRoute>}/>
@@ -58,6 +56,7 @@ function AppRoutes() {
       <Route path="/leads"      element={<PrivateRoute><BizaxlLayout><LeadsPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/quicklinks" element={<PrivateRoute><BizaxlLayout><QuickLinksPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/about"      element={<PrivateRoute><BizaxlLayout><AboutPage/></BizaxlLayout></PrivateRoute>}/>
+      <Route path="/org"        element={<PrivateRoute><BizaxlLayout><OrgChartPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/profile"    element={<PrivateRoute><BizaxlLayout><ProfilePage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/admin"      element={<PrivateRoute><BizaxlLayout><AdminPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="*"           element={<Navigate to="/"/>}/>

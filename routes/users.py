@@ -119,3 +119,10 @@ def delete_user(user_id):
         return jsonify({"error":"Forbidden"}), 403
     users_col.delete_one({"_id": ObjectId(user_id)})
     return jsonify({"ok": True}), 200
+
+# Public endpoint - no auth needed for registration form
+from flask import Blueprint as _B
+@users_bp.route("/departments_public", methods=["GET"])
+def get_departments_public():
+    depts = list(depts_col.find().sort("name",1))
+    return jsonify([{"name": d["name"], "color": d.get("color","#14F1B1")} for d in depts]), 200

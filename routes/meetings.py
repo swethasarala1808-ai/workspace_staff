@@ -6,6 +6,7 @@ import datetime
 
 meetings_bp = Blueprint("meetings", __name__)
 meetings_col = db["meetings"]
+recurring_col = db["recurring_links"]
 
 def serialize_meeting(m, uid=None):
     now = datetime.datetime.utcnow()
@@ -28,8 +29,7 @@ def serialize_meeting(m, uid=None):
         "platform": m.get("platform","Google Meet"),
         "organizer_id": m.get("organizer_id",""),
         "organizer_name": m.get("organizer_name",""),
-        "attendees": m.get("attendees",[]),  # ["all"] or ["dept:Marketing"] or list of user ids
-        "attendee_names": m.get("attendee_names",[]),
+        "attendees": m.get("attendees",["all"]),
         "notes": m.get("notes",""),
         "agenda": m.get("agenda",[]),
         "recording_url": m.get("recording_url",""),
@@ -53,19 +53,12 @@ def user_can_see(m, uid, user):
 def list_meetings():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
-    view = request.args.get("view","upcoming")  # upcoming | past | mine | all
+    view = request.args.get("view","upcoming")
     now = datetime.datetime.utcnow()
-
-    if view == "mine":
-        q = {"organizer_id": uid}
-    elif view == "past":
-        q = {"end_dt": {"$lt": now}}
-    elif view == "all":
-        q = {}
-    else:
-        q = {"end_dt": {"$gte": now}}
-
-    all_meetings = list(meetings_col.find(q).sort("start_dt", 1))
+    if view == "mine": q = {"organizer_id": uid}
+    elif view == "past": q = {"end_dt": {"$lt": now}}
+    else: q = {"end_dt": {"$gte": now}}
+    all_meetings = list(meetings_col.find(q).sort("start_dt",1))
     visible = [m for m in all_meetings if user_can_see(m, uid, user)]
     return jsonify([serialize_meeting(m, uid) for m in visible]), 200
 
@@ -75,11 +68,9 @@ def create_meeting():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
-
-    # Parse dates
     try:
         start_dt = datetime.datetime.fromisoformat(data["start_dt"])
-        duration = int(data.get("duration_mins", 60))
+        duration = int(data.get("duration_mins",60))
         end_dt = start_dt + datetime.timedelta(minutes=duration)
     except Exception as e:
         return jsonify({"error": f"Invalid date: {e}"}), 400
@@ -95,7 +86,6 @@ def create_meeting():
         "organizer_id": uid,
         "organizer_name": user["name"],
         "attendees": data.get("attendees",["all"]),
-        "attendee_names": data.get("attendee_names",[]),
         "agenda": data.get("agenda",[]),
         "notes": "",
         "recording_url": "",
@@ -116,7 +106,7 @@ def update_meeting(mid):
         return jsonify({"error":"Forbidden"}), 403
     data = request.json
     update = {}
-    for field in ["title","description","meeting_link","platform","attendees","attendee_names","notes","agenda","recording_url"]:
+    for field in ["title","description","meeting_link","platform","attendees","notes","agenda","recording_url"]:
         if field in data: update[field] = data[field]
     if "start_dt" in data:
         start_dt = datetime.datetime.fromisoformat(data["start_dt"])
@@ -148,13 +138,40 @@ def update_notes(mid):
     meetings_col.update_one({"_id": ObjectId(mid)}, {"$set": {"notes": data.get("notes","")}})
     return jsonify({"ok":True}), 200
 
-@meetings_bp.route("/meetings/upcoming_count", methods=["GET"])
+# ── Recurring / permanent meeting links ──────────────────
+@meetings_bp.route("/meetings/recurring", methods=["GET"])
 @jwt_required()
-def upcoming_count():
+def get_recurring():
+    links = list(recurring_col.find())
+    return jsonify([{"id":str(l["_id"]),"title":l["title"],"link":l["link"],"platform":l.get("platform","Google Meet"),"schedule":l.get("schedule","Daily"),"created_by":l.get("created_by_name","")} for l in links]), 200
+
+@meetings_bp.route("/meetings/recurring", methods=["POST"])
+@jwt_required()
+def create_recurring():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
-    now = datetime.datetime.utcnow()
-    soon = now + datetime.timedelta(hours=24)
-    meetings = list(meetings_col.find({"start_dt":{"$gte":now,"$lte":soon}}))
-    visible = [m for m in meetings if user_can_see(m, uid, user)]
-    return jsonify({"count": len(visible)}), 200
+    if user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    data = request.json
+    link = {
+        "title": data.get("title",""),
+        "link": data.get("link",""),
+        "platform": data.get("platform","Google Meet"),
+        "schedule": data.get("schedule","Daily"),
+        "created_by_id": uid,
+        "created_by_name": user["name"],
+        "created_at": datetime.datetime.utcnow(),
+    }
+    r = recurring_col.insert_one(link)
+    link["_id"] = r.inserted_id
+    return jsonify({"id":str(link["_id"]),"title":link["title"],"link":link["link"],"platform":link["platform"],"schedule":link["schedule"]}), 201
+
+@meetings_bp.route("/meetings/recurring/<lid>", methods=["DELETE"])
+@jwt_required()
+def delete_recurring(lid):
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    if user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    recurring_col.delete_one({"_id": ObjectId(lid)})
+    return jsonify({"ok":True}), 200

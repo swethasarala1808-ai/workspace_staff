@@ -47,6 +47,7 @@ from routes.meetings      import meetings_bp
 from routes.leads         import leads_bp
 from routes.quicklinks    import quicklinks_bp
 from routes.announcements import announcements_bp
+from routes.orgchart      import orgchart_bp
 
 app.register_blueprint(auth_bp,          url_prefix="/api/auth")
 app.register_blueprint(chat_bp,          url_prefix="/api/chat")
@@ -60,6 +61,7 @@ app.register_blueprint(meetings_bp,      url_prefix="/api")
 app.register_blueprint(leads_bp,         url_prefix="/api")
 app.register_blueprint(quicklinks_bp,    url_prefix="/api")
 app.register_blueprint(announcements_bp, url_prefix="/api")
+app.register_blueprint(orgchart_bp,      url_prefix="/api")
 
 @app.route("/api/health")
 def health():
@@ -78,5 +80,5 @@ def serve_react(path):
 if __name__ == "__main__":
     port = int(os.getenv("FLASK_PORT",5000))
     debug = os.getenv("FLASK_DEBUG","True").lower() == "true"
-    print(f"\n  Bizaxl WorkSpace running at http://localhost:{port}\n")
+    print(f"\n  bizaxl WorkSpace running at http://localhost:{port}\n")
     app.run(host="0.0.0.0", port=port, debug=debug)
