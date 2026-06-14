@@ -55,8 +55,8 @@ function AppRoutes() {
       <Route path="/materials"  element={<PrivateRoute><BizaxlLayout><MaterialsPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/leads"      element={<PrivateRoute><BizaxlLayout><LeadsPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/quicklinks" element={<PrivateRoute><BizaxlLayout><QuickLinksPage/></BizaxlLayout></PrivateRoute>}/>
+      <Route path="/orgchart"   element={<PrivateRoute><BizaxlLayout><OrgChartPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/about"      element={<PrivateRoute><BizaxlLayout><AboutPage/></BizaxlLayout></PrivateRoute>}/>
-      <Route path="/org"        element={<PrivateRoute><BizaxlLayout><OrgChartPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/profile"    element={<PrivateRoute><BizaxlLayout><ProfilePage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="/admin"      element={<PrivateRoute><BizaxlLayout><AdminPage/></BizaxlLayout></PrivateRoute>}/>
       <Route path="*"           element={<Navigate to="/"/>}/>

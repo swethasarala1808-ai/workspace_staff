@@ -5,28 +5,28 @@ from bson import ObjectId
 import datetime
 
 orgchart_bp = Blueprint("orgchart", __name__)
-org_col = db["org_nodes"]
+orgchart_col = db["org_chart"]
 
 def serialize_node(n):
     return {
         "id": str(n["_id"]),
         "name": n["name"],
-        "title": n.get("title",""),
-        "type": n.get("type","employee"),  # founder|dept_head|lead|employee|intern
+        "role": n.get("role_title",""),
         "department": n.get("department",""),
+        "level": n.get("level", 0),
         "parent_id": n.get("parent_id",""),
-        "email": n.get("email",""),
-        "linked_user_id": n.get("linked_user_id",""),
-        "order": n.get("order", 0),
+        "color": n.get("color","#14F1B1"),
+        "user_id": n.get("user_id",""),
+        "avatar": n.get("avatar",""),
     }
 
-@orgchart_bp.route("/org", methods=["GET"])
+@orgchart_bp.route("/orgchart", methods=["GET"])
 @jwt_required()
-def get_org():
-    nodes = list(org_col.find().sort("order", 1))
+def get_orgchart():
+    nodes = list(orgchart_col.find().sort("level", 1))
     return jsonify([serialize_node(n) for n in nodes]), 200
 
-@orgchart_bp.route("/org", methods=["POST"])
+@orgchart_bp.route("/orgchart", methods=["POST"])
 @jwt_required()
 def create_node():
     uid = get_jwt_identity()
@@ -35,21 +35,20 @@ def create_node():
         return jsonify({"error": "Forbidden"}), 403
     data = request.json
     node = {
-        "name": data.get("name", ""),
-        "title": data.get("title", ""),
-        "type": data.get("type", "employee"),
-        "department": data.get("department", ""),
-        "parent_id": data.get("parent_id", ""),
-        "email": data.get("email", ""),
-        "linked_user_id": data.get("linked_user_id", ""),
-        "order": data.get("order", 99),
+        "name": data.get("name",""),
+        "role_title": data.get("role_title",""),
+        "department": data.get("department",""),
+        "level": int(data.get("level", 0)),
+        "parent_id": data.get("parent_id",""),
+        "color": data.get("color","#14F1B1"),
+        "user_id": data.get("user_id",""),
         "created_at": datetime.datetime.utcnow(),
     }
-    r = org_col.insert_one(node)
+    r = orgchart_col.insert_one(node)
     node["_id"] = r.inserted_id
     return jsonify(serialize_node(node)), 201
 
-@orgchart_bp.route("/org/<nid>", methods=["PUT"])
+@orgchart_bp.route("/orgchart/<nid>", methods=["PUT"])
 @jwt_required()
 def update_node(nid):
     uid = get_jwt_identity()
@@ -57,45 +56,50 @@ def update_node(nid):
     if user.get("role") != "admin":
         return jsonify({"error": "Forbidden"}), 403
     data = request.json
-    allowed = ["name","title","type","department","parent_id","email","linked_user_id","order"]
+    allowed = ["name","role_title","department","level","parent_id","color","user_id"]
     update = {k: data[k] for k in allowed if k in data}
-    org_col.update_one({"_id": ObjectId(nid)}, {"$set": update})
-    node = org_col.find_one({"_id": ObjectId(nid)})
+    orgchart_col.update_one({"_id": ObjectId(nid)}, {"$set": update})
+    node = orgchart_col.find_one({"_id": ObjectId(nid)})
     return jsonify(serialize_node(node)), 200
 
-@orgchart_bp.route("/org/<nid>", methods=["DELETE"])
+@orgchart_bp.route("/orgchart/<nid>", methods=["DELETE"])
 @jwt_required()
 def delete_node(nid):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     if user.get("role") != "admin":
         return jsonify({"error": "Forbidden"}), 403
-    # Also delete all children
-    org_col.delete_many({"parent_id": nid})
-    org_col.delete_one({"_id": ObjectId(nid)})
+    # Delete children too
+    orgchart_col.delete_many({"parent_id": nid})
+    orgchart_col.delete_one({"_id": ObjectId(nid)})
     return jsonify({"ok": True}), 200
 
-@orgchart_bp.route("/org/seed", methods=["POST"])
+@orgchart_bp.route("/orgchart/seed", methods=["POST"])
 @jwt_required()
-def seed_org():
+def seed_orgchart():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     if user.get("role") != "admin":
         return jsonify({"error": "Forbidden"}), 403
-    if org_col.count_documents({}) > 0:
-        return jsonify({"message": "Org chart already has data"}), 200
-    import datetime as dt
-    now = dt.datetime.utcnow()
-    # Founder
-    founder = org_col.insert_one({"name":"Founder / CEO","title":"Founder & CEO","type":"founder","department":"","parent_id":"","email":"","linked_user_id":"","order":0,"created_at":now})
-    fid = str(founder.inserted_id)
-    # Departments
-    depts = [
-        ("Deployment","Deployment Head","dept_head",1),
-        ("Functional","Functional Head","dept_head",2),
-        ("Marketing","Marketing Head","dept_head",3),
-        ("Research","Research Head","dept_head",4),
+    if orgchart_col.count_documents({}) > 0:
+        return jsonify({"message": "Already has data"}), 200
+    from datetime import datetime as dt
+    nodes = [
+        {"name":"Founder","role_title":"Founder & CEO","department":"Leadership","level":0,"parent_id":"","color":"#05133c"},
+        {"name":"Deployment Head","role_title":"Department Head","department":"Deployment","level":1,"parent_id":"founder","color":"#3b82f6"},
+        {"name":"Functional Head","role_title":"Department Head","department":"Functional","level":1,"parent_id":"founder","color":"#8b5cf6"},
+        {"name":"Marketing Head","role_title":"Department Head","department":"Marketing","level":1,"parent_id":"founder","color":"#ec4899"},
+        {"name":"Research Head","role_title":"Department Head","department":"Research","level":1,"parent_id":"founder","color":"#10b981"},
     ]
-    for dept_name, title, node_type, order in depts:
-        org_col.insert_one({"name":title,"title":title,"type":node_type,"department":dept_name,"parent_id":fid,"email":"","linked_user_id":"","order":order,"created_at":now})
-    return jsonify({"message": "Org chart seeded with founder and department heads"}), 200
+    inserted_ids = {}
+    for n in nodes:
+        n["created_at"] = dt.utcnow()
+        pid = n.get("parent_id","")
+        if pid in inserted_ids:
+            n["parent_id"] = inserted_ids[pid]
+        r = orgchart_col.insert_one(dict(n))
+        key = n["role_title"].split()[0].lower() if "Founder" in n["name"] else n["name"].split()[0].lower()
+        inserted_ids[key] = str(r.inserted_id)
+        if "Founder" in n["name"]:
+            inserted_ids["founder"] = str(r.inserted_id)
+    return jsonify({"message": "Seeded org chart"}), 200

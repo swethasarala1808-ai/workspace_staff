@@ -21,7 +21,7 @@ jwt = JWTManager(app)
 
 @app.route("/static/logo.svg")
 def serve_logo():
-    return send_from_directory(os.path.join(BASE_DIR,"static"), "logo.svg")
+    return send_from_directory(os.path.join(BASE_DIR, "static"), "logo.svg")
 
 @app.route("/static/uploads/<path:filename>")
 def serve_upload(filename):
@@ -33,7 +33,7 @@ def serve_drive_file(filename):
 
 @app.route("/static/<path:filename>")
 def serve_static(filename):
-    return send_from_directory(os.path.join(BUILD_DIR,"static"), filename)
+    return send_from_directory(os.path.join(BUILD_DIR, "static"), filename)
 
 from routes.auth          import auth_bp
 from routes.chat          import chat_bp
@@ -63,6 +63,13 @@ app.register_blueprint(quicklinks_bp,    url_prefix="/api")
 app.register_blueprint(announcements_bp, url_prefix="/api")
 app.register_blueprint(orgchart_bp,      url_prefix="/api")
 
+# Public endpoint - departments for registration (no auth needed)
+from models.db import db
+@app.route("/api/public/departments")
+def public_departments():
+    depts = list(db["departments"].find({}, {"name":1, "color":1, "icon":1}))
+    return jsonify([{"name":d["name"],"color":d.get("color","#14F1B1"),"icon":d.get("icon","👥")} for d in depts])
+
 @app.route("/api/health")
 def health():
     return jsonify({"status":"ok"}), 200
@@ -72,13 +79,13 @@ def health():
 def serve_react(path):
     if path.startswith("api/") or path.startswith("static/"):
         return jsonify({"error":"Not found"}), 404
-    index_path = os.path.join(BUILD_DIR,"index.html")
+    index_path = os.path.join(BUILD_DIR, "index.html")
     if os.path.exists(index_path):
         return send_file(index_path)
     return jsonify({"error":"Frontend not built"}), 404
 
 if __name__ == "__main__":
-    port = int(os.getenv("FLASK_PORT",5000))
+    port = int(os.getenv("FLASK_PORT", 5000))
     debug = os.getenv("FLASK_DEBUG","True").lower() == "true"
     print(f"\n  bizaxl WorkSpace running at http://localhost:{port}\n")
     app.run(host="0.0.0.0", port=port, debug=debug)
