@@ -48,6 +48,7 @@ from routes.leads         import leads_bp
 from routes.quicklinks    import quicklinks_bp
 from routes.announcements import announcements_bp
 from routes.orgchart      import orgchart_bp
+from routes.about         import about_bp
 
 app.register_blueprint(auth_bp,          url_prefix="/api/auth")
 app.register_blueprint(chat_bp,          url_prefix="/api/chat")
@@ -62,6 +63,7 @@ app.register_blueprint(leads_bp,         url_prefix="/api")
 app.register_blueprint(quicklinks_bp,    url_prefix="/api")
 app.register_blueprint(announcements_bp, url_prefix="/api")
 app.register_blueprint(orgchart_bp,      url_prefix="/api")
+app.register_blueprint(about_bp,         url_prefix="/api")
 
 # Public endpoint - departments for registration (no auth needed)
 from models.db import db

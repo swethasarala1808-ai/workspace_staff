@@ -74,7 +74,7 @@ export default function AdminPage() {
 
       {/* Stats */}
       <div className="grid-4" style={{marginBottom:24}}>
-        {[['Total Users',users.length,'var(--navy)'],['Bizaxl',bizaxl.length,'#059669'],['Seria',seria.length,'#d97706'],['Departments',depts.length,'#7c3aed']].map(([l,v,c])=>(
+        {[['Total Users',users.length,'var(--navy)'],['bizaxl',bizaxl.length,'#059669'],['Seria',seria.length,'#d97706'],['Departments',depts.length,'#7c3aed']].map(([l,v,c])=>(
           <div key={l} className="card card-sm" style={{textAlign:'center'}}>
             <div style={{fontSize:26, fontWeight:800, color:c}}>{v}</div>
             <div style={{fontSize:12, color:'var(--gray-400)', marginTop:3}}>{l}</div>
@@ -84,7 +84,7 @@ export default function AdminPage() {
 
       {/* Tabs */}
       <div className="tabs">
-        {[['users','All Users'],['bizaxl','Bizaxl'],['seria','Seria'],['departments','Departments']].map(([id,label])=>(
+        {[['users','All Users'],['bizaxl','bizaxl'],['seria','Seria'],['departments','Departments']].map(([id,label])=>(
           <button key={id} className={`tab${tab===id?' active':''}`} onClick={()=>setTab(id)}>{label}</button>
         ))}
       </div>

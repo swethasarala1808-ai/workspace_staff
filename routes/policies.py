@@ -8,7 +8,7 @@ policies_bp = Blueprint("policies", __name__)
 
 HANDBOOK_POLICIES = [
   # Company Handbook
-  {"category":"Our Purpose","emoji":"🚀","title":"Why Bizaxl Exists",
+  {"category":"Our Purpose","emoji":"🚀","title":"Why bizaxl Exists",
    "summary":"We exist to simplify, automate, and accelerate the growth of MSMEs across India.",
    "content":"""We exist to simplify, automate, and accelerate the growth of MSMEs across India.
 
@@ -25,7 +25,7 @@ What we want every customer to feel:
 • "They celebrate my wins like their own." """},
 
   {"category":"Core Values","emoji":"❤️","title":"Our Five Core Values",
-   "summary":"The five values that are the soul of Bizaxl.",
+   "summary":"The five values that are the soul of bizaxl.",
    "content":"""🔍 Truth & Honesty
 We are always transparent — about what we can do, what we can't, and what it costs.
 
@@ -42,7 +42,7 @@ We are consistently dependable — in our product, our support, and our promises
 Our goal is to make customers stronger and more confident — not dependent on us."""},
 
   {"category":"Guiding Principles","emoji":"🧭","title":"How We Live Our Values Every Day",
-   "summary":"Five principles that guide every decision and interaction at Bizaxl.",
+   "summary":"Five principles that guide every decision and interaction at bizaxl.",
    "content":"""1. Human first, AI second.
 AI is a tool to remove repetitive work. Human judgment, care, and relationships always remain at the centre.
 
@@ -59,7 +59,7 @@ We openly share our product roadmap, limitations, pricing logic, and data practi
 We acknowledge we don't know everything. We learn from our customers, admit mistakes quickly, and keep improving."""},
 
   {"category":"Team Culture","emoji":"👥","title":"How We Work Together",
-   "summary":"How we treat each other inside Bizaxl.",
+   "summary":"How we treat each other inside bizaxl.",
    "content":"""How we work together:
 • No hierarchy in conversations — message anyone, including founders, directly.
 • Every meeting needs an agenda. No agenda = no meeting.
@@ -72,7 +72,7 @@ How we think about customers:
 • Before any action, ask: "If this customer were my friend, would I still do this?"
 • Their stress is real. Their family depends on their business. We carry that with us always.
 
-This handbook belongs to everyone at Bizaxl — from founders to the newest intern. Living these values is not optional. It is who we are."""},
+This handbook belongs to everyone at bizaxl — from founders to the newest intern. Living these values is not optional. It is who we are."""},
 
   # HR Policies
   {"category":"Work & Hours","emoji":"🕐","title":"Work Hours & Flexibility",
@@ -147,7 +147,7 @@ When you leave:
 • Final settlement: All dues cleared within 15 working days of last day.
 • Exit interview: Optional, but we genuinely value your honest feedback.
 
-You always leave on good terms. You are part of the Bizaxl family even after you move on."""},
+You always leave on good terms. You are part of the bizaxl family even after you move on."""},
 ]
 
 def serialize_policy(p, read_list=None):

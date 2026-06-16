@@ -49,7 +49,7 @@ export default function SeriaPortal() {
       <div style={{background:'var(--navy)', borderBottom:'1px solid rgba(255,255,255,0.08)'}}>
         <div style={{position:'absolute', top:0, left:0, right:0, height:3, background:'linear-gradient(90deg,#14F1B1,#114EFF,#091526)'}}/>
         <div style={{maxWidth:1100, margin:'0 auto', padding:'0 32px', height:62, display:'flex', alignItems:'center', justifyContent:'space-between', position:'relative'}}>
-          <img src="/static/logo.svg" alt="Bizaxl" style={{height:28, filter:'brightness(0) invert(1)'}}/>
+          <img src="/static/logo.svg" alt="bizaxl" style={{height:28, filter:'brightness(0) invert(1)'}}/>
           <div style={{display:'flex', alignItems:'center', gap:12}}>
             <span style={{color:'rgba(255,255,255,0.6)', fontSize:13}}>Hi, {user.name}</span>
             <span style={{background:'rgba(20,241,177,0.1)', color:'#14F1B1', padding:'3px 12px', borderRadius:20, fontSize:12, fontWeight:600, border:'1px solid rgba(20,241,177,0.2)'}}>Seria</span>
@@ -61,7 +61,7 @@ export default function SeriaPortal() {
       <div style={{maxWidth:1100, margin:'0 auto', padding:'32px'}}>
         {/* Tabs */}
         <div className="tabs">
-          {[['materials','Materials'],['leads','Submit Lead'],['about','About Bizaxl']].map(([id,label])=>(
+          {[['materials','Materials'],['leads','Submit Lead'],['about','About bizaxl']].map(([id,label])=>(
             <button key={id} className={`tab${tab===id?' active':''}`} onClick={()=>setTab(id)}>{label}</button>
           ))}
         </div>
@@ -135,7 +135,7 @@ export default function SeriaPortal() {
           <div style={{maxWidth:600}}>
             <div style={{marginBottom:20}}>
               <h2 style={{fontWeight:700, fontSize:20, marginBottom:4}}>Submit a Lead</h2>
-              <p style={{color:'var(--gray-400)', fontSize:14}}>Spotted a potential Bizaxl customer in your circle or on social media? Let the team know!</p>
+              <p style={{color:'var(--gray-400)', fontSize:14}}>Spotted a potential bizaxl customer in your circle or on social media? Let the team know!</p>
             </div>
             {leadMsg && <div className="alert alert-success">{leadMsg}</div>}
             <div className="card">
@@ -165,7 +165,7 @@ export default function SeriaPortal() {
           <div>
             <div style={{background:'var(--navy)', borderRadius:16, padding:40, marginBottom:24, position:'relative', overflow:'hidden'}}>
               <div style={{position:'absolute', top:0, left:0, right:0, height:3, background:'linear-gradient(90deg,#14F1B1,#114EFF,#091526)'}}/>
-              <img src="/static/logo.svg" alt="Bizaxl" style={{height:28, filter:'brightness(0) invert(1)', marginBottom:20}}/>
+              <img src="/static/logo.svg" alt="bizaxl" style={{height:28, filter:'brightness(0) invert(1)', marginBottom:20}}/>
               <h2 style={{color:'white', fontSize:24, fontWeight:700, lineHeight:1.4, marginBottom:8}}>
                 We build confidence, <span style={{color:'#14F1B1'}}>dignity, and growth.</span>
               </h2>

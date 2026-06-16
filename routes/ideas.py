@@ -6,89 +6,119 @@ import datetime
 
 ideas_bp = Blueprint("ideas", __name__)
 
-def serialize_idea(i):
+def serialize_idea(idea, uid=None):
     return {
-        "id": str(i["_id"]),
-        "title": i["title"],
-        "description": i["description"],
-        "tags": i.get("tags", []),
-        "author_name": i.get("author_name", ""),
-        "author_dept": i.get("author_dept", ""),
-        "likes": i.get("likes", []),
-        "like_count": len(i.get("likes", [])),
-        "comments": i.get("comments", []),
-        "status": i.get("status", "Open"),
-        "created_at": i["created_at"].isoformat(),
+        "id": str(idea["_id"]),
+        "title": idea["title"],
+        "description": idea["description"],
+        "tags": idea.get("tags",[]),
+        "status": idea.get("status","Open"),
+        "author_id": idea.get("author_id",""),
+        "author_name": idea.get("author_name",""),
+        "author_dept": idea.get("author_dept",""),
+        "like_count": len(idea.get("likes",[])),
+        "likes": idea.get("likes",[]),
+        "comments": idea.get("comments",[]),
+        "created_at": idea["created_at"].isoformat() if hasattr(idea.get("created_at"),"isoformat") else "",
     }
 
 @ideas_bp.route("/ideas", methods=["GET"])
 @jwt_required()
 def get_ideas():
-    sort = request.args.get("sort", "newest")
-    sort_field = "created_at" if sort == "newest" else "like_count"
-    ideas = list(ideas_col.find().sort("created_at", -1))
-    if sort == "liked":
-        ideas.sort(key=lambda x: len(x.get("likes", [])), reverse=True)
-    return jsonify([serialize_idea(i) for i in ideas]), 200
+    sort_by = request.args.get("sort","newest")
+    sort = [("created_at",-1)] if sort_by=="newest" else [("like_count",-1)]
+    # Add computed like_count for sorting
+    pipeline = [
+        {"$addFields":{"like_count":{"$size":{"$ifNull":["$likes",[]]}}}},
+        {"$sort":{"like_count":-1} if sort_by=="liked" else {"created_at":-1}},
+    ]
+    ideas = list(ideas_col.aggregate(pipeline))
+    uid = get_jwt_identity()
+    return jsonify([serialize_idea(i,uid) for i in ideas]), 200
 
 @ideas_bp.route("/ideas", methods=["POST"])
 @jwt_required()
-def post_idea():
+def create_idea():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
     idea = {
-        "title": data["title"],
-        "description": data["description"],
-        "tags": data.get("tags", []),
+        "title": data.get("title",""),
+        "description": data.get("description",""),
+        "tags": data.get("tags",[]),
+        "status": "Open",
         "author_id": uid,
         "author_name": user["name"],
-        "author_dept": user.get("department", ""),
+        "author_dept": user.get("department",""),
         "likes": [],
         "comments": [],
-        "status": "Open",
         "created_at": datetime.datetime.utcnow(),
     }
-    result = ideas_col.insert_one(idea)
-    idea["_id"] = result.inserted_id
+    r = ideas_col.insert_one(idea)
+    idea["_id"] = r.inserted_id
     return jsonify(serialize_idea(idea)), 201
 
-@ideas_bp.route("/ideas/<idea_id>/like", methods=["POST"])
+@ideas_bp.route("/ideas/<iid>", methods=["PUT"])
 @jwt_required()
-def like_idea(idea_id):
+def update_idea(iid):
     uid = get_jwt_identity()
-    idea = ideas_col.find_one({"_id": ObjectId(idea_id)})
-    if not idea:
-        return jsonify({"error": "Not found"}), 404
-    likes = idea.get("likes", [])
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    idea = ideas_col.find_one({"_id": ObjectId(iid)})
+    if not idea: return jsonify({"error":"Not found"}), 404
+    if idea.get("author_id") != uid and user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    data = request.json
+    update = {}
+    for f in ["title","description","tags"]:
+        if f in data: update[f] = data[f]
+    ideas_col.update_one({"_id":ObjectId(iid)},{"$set":update})
+    idea = ideas_col.find_one({"_id":ObjectId(iid)})
+    return jsonify(serialize_idea(idea)), 200
+
+@ideas_bp.route("/ideas/<iid>", methods=["DELETE"])
+@jwt_required()
+def delete_idea(iid):
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    idea = ideas_col.find_one({"_id": ObjectId(iid)})
+    if not idea: return jsonify({"error":"Not found"}), 404
+    if idea.get("author_id") != uid and user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    ideas_col.delete_one({"_id":ObjectId(iid)})
+    return jsonify({"ok":True}), 200
+
+@ideas_bp.route("/ideas/<iid>/like", methods=["POST"])
+@jwt_required()
+def like_idea(iid):
+    uid = get_jwt_identity()
+    idea = ideas_col.find_one({"_id": ObjectId(iid)})
+    if not idea: return jsonify({"error":"Not found"}), 404
+    likes = idea.get("likes",[])
     if uid in likes:
-        likes.remove(uid)
+        ideas_col.update_one({"_id":ObjectId(iid)},{"$pull":{"likes":uid}})
     else:
-        likes.append(uid)
-    ideas_col.update_one({"_id": ObjectId(idea_id)}, {"$set": {"likes": likes}})
-    return jsonify({"likes": len(likes), "liked": uid in likes}), 200
+        ideas_col.update_one({"_id":ObjectId(iid)},{"$addToSet":{"likes":uid}})
+    idea = ideas_col.find_one({"_id":ObjectId(iid)})
+    return jsonify(serialize_idea(idea)), 200
 
-@ideas_bp.route("/ideas/<idea_id>/comment", methods=["POST"])
+@ideas_bp.route("/ideas/<iid>/comment", methods=["POST"])
 @jwt_required()
-def comment_idea(idea_id):
+def add_comment(iid):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
-    comment = {
-        "author": user["name"],
-        "text": data["text"],
-        "created_at": datetime.datetime.utcnow().isoformat(),
-    }
-    ideas_col.update_one({"_id": ObjectId(idea_id)}, {"$push": {"comments": comment}})
-    return jsonify(comment), 201
+    comment = {"author":user["name"],"dept":user.get("department",""),"text":data.get("text",""),"created_at":datetime.datetime.utcnow().isoformat()}
+    ideas_col.update_one({"_id":ObjectId(iid)},{"$push":{"comments":comment}})
+    idea = ideas_col.find_one({"_id":ObjectId(iid)})
+    return jsonify(serialize_idea(idea)), 200
 
-@ideas_bp.route("/ideas/<idea_id>/status", methods=["PUT"])
+@ideas_bp.route("/ideas/<iid>/status", methods=["PUT"])
 @jwt_required()
-def update_status(idea_id):
+def update_status(iid):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
-    if user.get("role") != "admin":
-        return jsonify({"error": "Forbidden"}), 403
+    if user.get("role") != "admin": return jsonify({"error":"Forbidden"}), 403
     data = request.json
-    ideas_col.update_one({"_id": ObjectId(idea_id)}, {"$set": {"status": data["status"]}})
-    return jsonify({"status": data["status"]}), 200
+    ideas_col.update_one({"_id":ObjectId(iid)},{"$set":{"status":data.get("status","Open")}})
+    idea = ideas_col.find_one({"_id":ObjectId(iid)})
+    return jsonify(serialize_idea(idea)), 200

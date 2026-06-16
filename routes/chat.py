@@ -14,6 +14,7 @@ def serialize_msg(m):
         "sender_dept": m.get("sender_dept",""),
         "channel": m["channel"],
         "text": m["text"],
+        "edited": m.get("edited", False),
         "created_at": m["created_at"].isoformat(),
     }
 
@@ -46,11 +47,25 @@ def send_message():
         "sender_dept": user.get("department",""),
         "channel": channel,
         "text": data.get("text",""),
+        "edited": False,
         "created_at": datetime.datetime.utcnow(),
     }
     result = messages_col.insert_one(msg)
     msg["_id"] = result.inserted_id
     return jsonify(serialize_msg(msg)), 201
+
+@chat_bp.route("/messages/<msg_id>", methods=["PUT"])
+@jwt_required()
+def edit_message(msg_id):
+    uid = get_jwt_identity()
+    msg = messages_col.find_one({"_id": ObjectId(msg_id)})
+    if not msg: return jsonify({"error":"Not found"}), 404
+    if msg.get("sender_id") != uid:
+        return jsonify({"error":"Forbidden"}), 403
+    data = request.json
+    messages_col.update_one({"_id": ObjectId(msg_id)}, {"$set":{"text": data.get("text",""), "edited": True}})
+    msg = messages_col.find_one({"_id": ObjectId(msg_id)})
+    return jsonify(serialize_msg(msg)), 200
 
 @chat_bp.route("/messages/<msg_id>", methods=["DELETE"])
 @jwt_required()
@@ -58,8 +73,7 @@ def delete_message(msg_id):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     msg = messages_col.find_one({"_id": ObjectId(msg_id)})
-    if not msg:
-        return jsonify({"error":"Not found"}), 404
+    if not msg: return jsonify({"error":"Not found"}), 404
     if msg.get("sender_id") != uid and user.get("role") != "admin":
         return jsonify({"error":"Forbidden"}), 403
     messages_col.delete_one({"_id": ObjectId(msg_id)})

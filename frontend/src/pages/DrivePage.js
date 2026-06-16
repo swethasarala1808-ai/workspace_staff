@@ -282,7 +282,7 @@ export default function DrivePage() {
               <button className="btn btn-outline btn-sm" onClick={()=>setShareTarget(null)}>✕</button>
             </div>
             <p style={{color:'var(--gray-400)',fontSize:13,marginBottom:16}}>Who can access this file?</p>
-            {[['all','Everyone','All staff across Bizaxl & Seria'],
+            {[['all','Everyone','All staff across bizaxl & Seria'],
               ['dept','My Department','Only people in your department'],
               ['private','Only Me','Private — only you can see it']
             ].map(([val,label,desc])=>(

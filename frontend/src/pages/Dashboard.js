@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
-import { getDailyQuote, QUOTES } from '../data/quotes';
+import { getDailyQuote, QUOTES, WEEKDAY_QUOTES } from '../data/quotes';
 
 const DEPT_COLORS = { Deployment:'#3b82f6', Functional:'#8b5cf6', Marketing:'#ec4899', Research:'#10b981' };
 
