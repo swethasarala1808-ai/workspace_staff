@@ -106,10 +106,20 @@ export default function EmailPage() {
 
       {error && (
         <div className="alert alert-error">
-          {error}
-          {error.toLowerCase().includes('network') || error.toLowerCase().includes('block') || error.toLowerCase().includes('timed out') ? (
-            <div style={{marginTop:6,fontSize:12}}>This is common on office/WSL networks that block email ports (993/465). Try a different network, or run the app on native Windows Python instead of WSL.</div>
-          ) : null}
+          <div style={{marginBottom: error.toLowerCase().includes('network') || error.toLowerCase().includes('block') || error.toLowerCase().includes('unreachable') || error.toLowerCase().includes('timed out') ? 10 : 0}}>
+            {error}
+          </div>
+          {(error.toLowerCase().includes('network') || error.toLowerCase().includes('block') || error.toLowerCase().includes('unreachable') || error.toLowerCase().includes('timed out')) && (
+            <div>
+              <p style={{fontSize:12,marginBottom:10,opacity:0.85}}>
+                Mail ports (993/465) are blocked on this network — this is a network-level block (router/ISP/campus firewall), not something the app can work around. Normal web browsing still works fine because that uses different ports.
+              </p>
+              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                <a href="https://mail.hostinger.com" target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">Open Webmail Instead</a>
+                <button type="button" className="btn btn-outline btn-sm" onClick={fetchInbox}>Retry</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

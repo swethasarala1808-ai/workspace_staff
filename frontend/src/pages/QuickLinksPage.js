@@ -2,34 +2,39 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const DEPTS = ['all','Deployment','Functional','Marketing','Research'];
-const DEPT_LABELS = { all:'Everyone', Deployment:'Deployment', Functional:'Functional', Marketing:'Marketing', Research:'Research' };
-
 export default function QuickLinksPage() {
   const { user, API } = useAuth();
   const [links, setLinks] = useState([]);
+  const [depts, setDepts] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title:'', url:'', icon:'🔗', dept:'all' });
   const [msg, setMsg] = useState('');
 
-  const fetch = () => axios.get(`${API}/quicklinks`).then(r=>setLinks(r.data)).catch(()=>{});
-  useEffect(()=>{ fetch(); },[]);
+  const fetchLinks = () => axios.get(`${API}/quicklinks`).then(r=>setLinks(r.data)).catch(()=>{});
+  const fetchDepts = () => axios.get(`${API}/departments`).then(r=>setDepts(r.data)).catch(()=>{
+    setDepts([{name:'Deployment'},{name:'Functional'},{name:'Marketing'},{name:'Research'}]);
+  });
+
+  useEffect(()=>{ fetchLinks(); fetchDepts(); },[]);
+
+  const deptLabel = (dept) => dept === 'all' ? 'Everyone' : dept;
+  const allOptions = ['all', ...depts.map(d=>d.name)];
 
   const submit = async (e) => {
     e.preventDefault();
     await axios.post(`${API}/quicklinks`, form);
     setForm({ title:'', url:'', icon:'🔗', dept:'all' });
-    setShowForm(false); fetch();
+    setShowForm(false); fetchLinks();
     setMsg('Quick link added ✓'); setTimeout(()=>setMsg(''),3000);
   };
 
   const del = async (id) => {
     await axios.delete(`${API}/quicklinks/${id}`);
-    fetch();
+    fetchLinks();
   };
 
-  // Group by dept
-  const grouped = DEPTS.reduce((acc, d) => {
+  // Group by dept — only show groups that actually have links, in the order departments exist
+  const grouped = allOptions.reduce((acc, d) => {
     const dlinks = links.filter(l => l.dept === d);
     if (dlinks.length) acc[d] = dlinks;
     return acc;
@@ -43,7 +48,7 @@ export default function QuickLinksPage() {
           <p className="page-subtitle">Department shortcuts for daily tools and links</p>
         </div>
         {user.role === 'admin' && (
-          <button className="btn btn-primary" onClick={()=>setShowForm(!showForm)}>+ Add Link</button>
+          <button className="btn btn-primary" onClick={()=>setShowForm(!showForm)}>{showForm?'Cancel':'+ Add Link'}</button>
         )}
       </div>
 
@@ -70,7 +75,7 @@ export default function QuickLinksPage() {
             <div className="form-group">
               <label className="label">Visible To</label>
               <select className="select" value={form.dept} onChange={e=>setForm(f=>({...f,dept:e.target.value}))}>
-                {DEPTS.map(d=><option key={d} value={d}>{DEPT_LABELS[d]}</option>)}
+                {allOptions.map(d=><option key={d} value={d}>{deptLabel(d)}</option>)}
               </select>
             </div>
             <div style={{display:'flex', gap:8}}>
@@ -86,7 +91,7 @@ export default function QuickLinksPage() {
         : Object.entries(grouped).map(([dept, dlinks])=>(
           <div key={dept} style={{marginBottom:24}}>
             <div style={{fontSize:11, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--gray-400)', marginBottom:12}}>
-              {DEPT_LABELS[dept]}
+              {deptLabel(dept)}
             </div>
             <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(220px,1fr))', gap:10}}>
               {dlinks.map(l=>(

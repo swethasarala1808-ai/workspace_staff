@@ -51,6 +51,8 @@ def get_inbox():
     except socket.timeout:
         return jsonify({"error":"Connection timed out. Your network may be blocking port 993. Try on a different network."}), 503
     except OSError as e:
+        if getattr(e, "errno", None) == 101:
+            return jsonify({"error":"Network is unreachable on port 993. This network (often a campus/ISP/router firewall in WSL setups) blocks outbound mail ports entirely, even though normal web browsing works. This isn't something the app can bypass — try a mobile hotspot, a VPN, or open webmail directly at https://mail.hostinger.com instead."}), 503
         return jsonify({"error":f"Network error: {str(e)}. Port 993 may be blocked on this network (common in WSL/office networks)."}), 503
     except Exception as e:
         return jsonify({"error":f"Could not connect: {str(e)}"}), 500
@@ -105,6 +107,10 @@ def send_email():
         return jsonify({"error":"SMTP login failed. Check email and password."}), 401
     except socket.timeout:
         return jsonify({"error":"Connection timed out. Port 465 may be blocked."}), 503
+    except OSError as e:
+        if getattr(e, "errno", None) == 101:
+            return jsonify({"error":"Network is unreachable on port 465. This network blocks outbound mail ports — try a mobile hotspot, a VPN, or send via https://mail.hostinger.com directly."}), 503
+        return jsonify({"error":f"Network error: {str(e)}"}), 503
     except Exception as e:
         return jsonify({"error":str(e)}), 500
 

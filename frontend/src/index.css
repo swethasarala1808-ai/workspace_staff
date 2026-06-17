@@ -34,17 +34,20 @@ body {
 /* ── Layout ── */
 .app-shell { display:flex; min-height:100vh; }
 .sidebar {
-  width: 240px; min-height:100vh; background:var(--navy);
+  width: 240px; height:100vh; background:var(--navy);
   display:flex; flex-direction:column; position:fixed; top:0; left:0; z-index:100;
-  border-right: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255,255,255,0.06); overflow:hidden;
 }
 .main-content { margin-left:240px; flex:1; background:var(--gray-100); min-height:100vh; }
 .page-container { padding:32px 36px; max-width:1200px; }
 
 /* ── Sidebar elements ── */
-.sidebar-logo { padding:24px 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); }
+.sidebar-logo { padding:24px 20px 20px; border-bottom:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
 .sidebar-logo img { height:28px; filter:brightness(0) invert(1); }
-.sidebar-nav { padding:12px 0; flex:1; overflow-y:auto; }
+.sidebar-nav { padding:12px 0; flex:1 1 auto; overflow-y:auto; min-height:0; }
+.sidebar-nav::-webkit-scrollbar { width:5px; }
+.sidebar-nav::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.12); border-radius:4px; }
+.sidebar-nav::-webkit-scrollbar-track { background:transparent; }
 .nav-item {
   display:flex; align-items:center; gap:10px;
   padding:9px 20px; color:rgba(255,255,255,0.55);
@@ -60,7 +63,7 @@ body {
   padding:16px 20px 6px; font-size:10px; font-weight:700; letter-spacing:1px;
   text-transform:uppercase; color:rgba(255,255,255,0.25);
 }
-.sidebar-bottom { padding:16px 20px; border-top:1px solid rgba(255,255,255,0.08); }
+.sidebar-bottom { padding:16px 20px; border-top:1px solid rgba(255,255,255,0.08); flex-shrink:0; }
 .user-chip {
   display:flex; align-items:center; gap:10px; padding:10px;
   background:rgba(255,255,255,0.05); border-radius:var(--radius);
