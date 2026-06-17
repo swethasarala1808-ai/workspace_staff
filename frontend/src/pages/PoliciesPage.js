@@ -2,40 +2,71 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const CATEGORIES = ['Leave','Code of Conduct','Remote Work','Benefits','Performance'];
-
 export default function PoliciesPage() {
   const { user, API } = useAuth();
   const [policies, setPolicies] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [selected, setSelected] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ category:'Leave', emoji:'', title:'', summary:'', content:'' });
+  const [showCatManager, setShowCatManager] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [form, setForm] = useState({ category:'', emoji:'', title:'', summary:'', content:'' });
   const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
 
-  const fetch = () => axios.get(`${API}/policies`).then(r=>setPolicies(r.data)).catch(()=>{});
-  useEffect(()=>{ fetch(); },[]);
+  const fetchPolicies = () => axios.get(`${API}/policies`).then(r=>setPolicies(r.data)).catch(()=>{});
+  const fetchCategories = () => axios.get(`${API}/policy_categories`).then(r=>setCategories(r.data)).catch(()=>{});
+
+  useEffect(()=>{ fetchPolicies(); fetchCategories(); },[]);
+
+  // Keep form's default category in sync once categories load
+  useEffect(()=>{
+    if (categories.length && !form.category) {
+      setForm(f=>({...f, category: categories[0].name}));
+    }
+  }, [categories]);
+
+  const showMsg = (m) => { setMsg(m); setTimeout(()=>setMsg(''),3000); };
+  const showErr = (m) => { setErr(m); setTimeout(()=>setErr(''),4000); };
 
   const create = async (e) => {
     e.preventDefault();
     await axios.post(`${API}/policies`, form);
-    setShowForm(false); setForm({ category:'Leave', emoji:'', title:'', summary:'', content:'' });
-    fetch(); setMsg('Policy published'); setTimeout(()=>setMsg(''),3000);
+    setShowForm(false); setForm({ category: categories[0]?.name||'', emoji:'', title:'', summary:'', content:'' });
+    fetchPolicies(); fetchCategories(); showMsg('Policy published');
   };
 
   const deletePolicy = async (id, e) => {
     e.stopPropagation();
     if (!window.confirm('Delete this policy?')) return;
     await axios.delete(`${API}/policies/${id}`);
-    fetch(); setMsg('Policy deleted'); setTimeout(()=>setMsg(''),3000);
+    fetchPolicies(); fetchCategories(); showMsg('Policy deleted');
   };
 
   const markRead = async (id) => {
-    await axios.post(`${API}/policies/${id}/read`); fetch();
+    await axios.post(`${API}/policies/${id}/read`); fetchPolicies();
   };
 
   const seed = async () => {
     const r = await axios.post(`${API}/policies/seed`);
-    setMsg(r.data.message); fetch(); setTimeout(()=>setMsg(''),3000);
+    showMsg(r.data.message); fetchPolicies(); fetchCategories();
+  };
+
+  const createCategory = async (e) => {
+    e.preventDefault();
+    if (!newCatName.trim()) return;
+    try {
+      await axios.post(`${API}/policy_categories`, { name: newCatName.trim() });
+      setNewCatName(''); fetchCategories(); showMsg('Category added');
+    } catch(error) { showErr(error.response?.data?.error || 'Could not add category'); }
+  };
+
+  const deleteCategory = async (cat) => {
+    if (!window.confirm(`Delete category "${cat.name}"?`)) return;
+    try {
+      await axios.delete(`${API}/policy_categories/${cat.id}`);
+      fetchCategories(); showMsg('Category deleted');
+    } catch(error) { showErr(error.response?.data?.error || 'Could not delete category'); }
   };
 
   const unread = policies.filter(p=>!p.read).length;
@@ -50,37 +81,68 @@ export default function PoliciesPage() {
         {user.role==='admin' && (
           <div style={{display:'flex', gap:8}}>
             <button className="btn btn-outline" onClick={seed}>Seed Defaults</button>
-            <button className="btn btn-primary" onClick={()=>setShowForm(!showForm)}>+ New Policy</button>
+            <button className="btn btn-outline" onClick={()=>{ setShowCatManager(!showCatManager); setShowForm(false); }}>{showCatManager?'Close':'Manage Categories'}</button>
+            <button className="btn btn-primary" onClick={()=>{ setShowForm(!showForm); setShowCatManager(false); }}>+ New Policy</button>
           </div>
         )}
       </div>
 
       {msg && <div className="alert alert-success">{msg}</div>}
+      {err && <div className="alert alert-error">{err}</div>}
+
+      {showCatManager && user.role==='admin' && (
+        <div className="card" style={{marginBottom:24, borderTop:'3px solid var(--mint)'}}>
+          <h3 style={{fontWeight:700, marginBottom:16, fontSize:16}}>Manage Categories</h3>
+          <form onSubmit={createCategory} style={{display:'flex', gap:8, marginBottom:18}}>
+            <input className="input" placeholder="New category name" value={newCatName} onChange={e=>setNewCatName(e.target.value)} style={{flex:1}}/>
+            <button type="submit" className="btn btn-primary">Add Category</button>
+          </form>
+          {categories.length===0 ? (
+            <p style={{color:'var(--gray-400)', fontSize:13}}>No categories yet.</p>
+          ) : (
+            <div style={{display:'flex', flexDirection:'column', gap:6}}>
+              {categories.map(c=>(
+                <div key={c.id} style={{display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:'var(--gray-100)', borderRadius:'var(--radius)'}}>
+                  <div style={{display:'flex', alignItems:'center', gap:10}}>
+                    <span style={{fontWeight:600, fontSize:14}}>{c.name}</span>
+                    <span className="badge badge-gray" style={{fontSize:11}}>{c.policy_count} polic{c.policy_count===1?'y':'ies'}</span>
+                  </div>
+                  <button className="btn btn-danger btn-sm" onClick={()=>deleteCategory(c)} style={{padding:'4px 10px', fontSize:12}}>Delete</button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showForm && user.role==='admin' && (
         <div className="card" style={{marginBottom:24, borderTop:'3px solid var(--mint)'}}>
           <h3 style={{fontWeight:700, marginBottom:20, fontSize:16}}>Create New Policy</h3>
-          <form onSubmit={create}>
-            <div className="form-row">
-              <div className="form-group">
-                <label className="label">Category</label>
-                <select className="select" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
-                  {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-                </select>
+          {categories.length===0 ? (
+            <div className="alert alert-info">No categories yet. Click "Manage Categories" above to create one first.</div>
+          ) : (
+            <form onSubmit={create}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label className="label">Category</label>
+                  <select className="select" value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))}>
+                    {categories.map(c=><option key={c.id} value={c.name}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="label">Emoji Icon</label>
+                  <input className="input" value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))} maxLength={2} placeholder="📋"/>
+                </div>
               </div>
-              <div className="form-group">
-                <label className="label">Emoji Icon</label>
-                <input className="input" value={form.emoji} onChange={e=>setForm(f=>({...f,emoji:e.target.value}))} maxLength={2} placeholder="📋"/>
+              <div className="form-group"><label className="label">Title *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required/></div>
+              <div className="form-group"><label className="label">Summary (one line)</label><input className="input" value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))} required/></div>
+              <div className="form-group"><label className="label">Full Content (plain language)</label><textarea className="input textarea" rows={6} value={form.content} onChange={e=>setForm(f=>({...f,content:e.target.value}))} required/></div>
+              <div style={{display:'flex', gap:8}}>
+                <button type="submit" className="btn btn-primary">Publish Policy</button>
+                <button type="button" className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancel</button>
               </div>
-            </div>
-            <div className="form-group"><label className="label">Title *</label><input className="input" value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required/></div>
-            <div className="form-group"><label className="label">Summary (one line)</label><input className="input" value={form.summary} onChange={e=>setForm(f=>({...f,summary:e.target.value}))} required/></div>
-            <div className="form-group"><label className="label">Full Content (plain language)</label><textarea className="input textarea" rows={6} value={form.content} onChange={e=>setForm(f=>({...f,content:e.target.value}))} required/></div>
-            <div style={{display:'flex', gap:8}}>
-              <button type="submit" className="btn btn-primary">Publish Policy</button>
-              <button type="button" className="btn btn-outline" onClick={()=>setShowForm(false)}>Cancel</button>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       )}
 

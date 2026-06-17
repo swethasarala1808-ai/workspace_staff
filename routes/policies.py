@@ -1,10 +1,13 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models.db import policies_col, users_col
+from models.db import policies_col, users_col, db
 from bson import ObjectId
 import datetime
 
 policies_bp = Blueprint("policies", __name__)
+policy_categories_col = db["policy_categories"]
+
+DEFAULT_CATEGORIES = ["Our Purpose","Core Values","Guiding Principles","Team Culture","Work & Hours","Leave","Pay & Growth","Safety & Respect","Joining & Exit"]
 
 HANDBOOK_POLICIES = [
   # Company Handbook
@@ -215,11 +218,69 @@ def seed_policies():
             p2["created_at"] = datetime.datetime.utcnow()
             policies_col.insert_one(p2)
             inserted += 1
-    return jsonify({"message": f"Seeded {inserted} policies from Company Handbook & HR Policies"}), 200
+    cat_inserted = 0
+    for c in DEFAULT_CATEGORIES:
+        if not policy_categories_col.find_one({"name": c}):
+            policy_categories_col.insert_one({"name": c, "created_at": datetime.datetime.utcnow()})
+            cat_inserted += 1
+    return jsonify({"message": f"Seeded {inserted} policies and {cat_inserted} categories"}), 200
 
 @policies_bp.route("/policies/<pid>/read", methods=["POST"])
 @jwt_required()
 def mark_read(pid):
     uid = get_jwt_identity()
     users_col.update_one({"_id": ObjectId(uid)}, {"$addToSet": {"read_policies": pid}})
+    return jsonify({"ok": True}), 200
+
+# ── Categories ──────────────────────────────────────────────
+def serialize_category(c):
+    count = policies_col.count_documents({"category": c["name"]})
+    return {"id": str(c["_id"]), "name": c["name"], "policy_count": count}
+
+@policies_bp.route("/policy_categories", methods=["GET"])
+@jwt_required()
+def get_policy_categories():
+    cats = list(policy_categories_col.find().sort("name", 1))
+    # Also include any categories that exist on policies but were never registered (legacy/manual data)
+    existing_names = {c["name"] for c in cats}
+    distinct_in_use = policies_col.distinct("category")
+    for name in distinct_in_use:
+        if name and name not in existing_names:
+            policy_categories_col.insert_one({"name": name, "created_at": datetime.datetime.utcnow()})
+            existing_names.add(name)
+    cats = list(policy_categories_col.find().sort("name", 1))
+    return jsonify([serialize_category(c) for c in cats]), 200
+
+@policies_bp.route("/policy_categories", methods=["POST"])
+@jwt_required()
+def create_policy_category():
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    if user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    data = request.json
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"error":"Name required"}), 400
+    if policy_categories_col.find_one({"name": name}):
+        return jsonify({"error":"Category already exists"}), 409
+    cat = {"name": name, "created_at": datetime.datetime.utcnow()}
+    r = policy_categories_col.insert_one(cat)
+    cat["_id"] = r.inserted_id
+    return jsonify(serialize_category(cat)), 201
+
+@policies_bp.route("/policy_categories/<cid>", methods=["DELETE"])
+@jwt_required()
+def delete_policy_category(cid):
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    if user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    cat = policy_categories_col.find_one({"_id": ObjectId(cid)})
+    if not cat:
+        return jsonify({"error":"Not found"}), 404
+    count = policies_col.count_documents({"category": cat["name"]})
+    if count > 0:
+        return jsonify({"error": f"Cannot delete — {count} polic{'y' if count==1 else 'ies'} still use this category. Delete or recategorize them first."}), 400
+    policy_categories_col.delete_one({"_id": ObjectId(cid)})
     return jsonify({"ok": True}), 200
