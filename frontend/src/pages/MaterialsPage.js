@@ -27,7 +27,19 @@ export default function MaterialsPage() {
   const [upForm, setUpForm] = useState({ title:'', description:'', solution:'', material_type:'document', tags:'' });
   const [upFiles, setUpFiles] = useState([]);
   const fileRef = useRef();
+  const [showSolForm, setShowSolForm] = useState(false);
+  const [solForm, setSolForm] = useState({ name:'', icon:'📦', color:'#14F1B1' });
   const showMsg = (m) => { setMsg(m); setTimeout(()=>setMsg(''),3000); };
+
+  const createSolution = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API}/solutions`, solForm);
+      setSolForm({ name:'', icon:'📦', color:'#14F1B1' });
+      setShowSolForm(false);
+      fetchMaterials(); showMsg('Solution added');
+    } catch(err) { showMsg(err.response?.data?.error || 'Error'); }
+  };
 
   const isMarketing = user.department==='Marketing' || user.role==='admin';
   const isAdmin = user.role==='admin';
@@ -272,10 +284,35 @@ export default function MaterialsPage() {
           {isAdmin&&(
             <div style={{marginBottom:16,display:'flex',gap:8}}>
               <button className="btn btn-outline" onClick={async()=>{ await axios.post(`${API}/solutions/seed`); fetchMaterials(); showMsg('Seeded'); }}>Seed Defaults</button>
+              <button className="btn btn-primary" onClick={()=>setShowSolForm(!showSolForm)}>{showSolForm?'Cancel':'+ Add Solution'}</button>
             </div>
           )}
+
+          {showSolForm && isAdmin && (
+            <div className="card" style={{marginBottom:20,borderTop:'3px solid var(--mint)',maxWidth:420}}>
+              <h3 style={{fontWeight:700,marginBottom:16,fontSize:15}}>Add Solution / Category</h3>
+              <form onSubmit={createSolution}>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="label">Name *</label>
+                    <input className="input" placeholder="e.g. Healthcare" value={solForm.name} onChange={e=>setSolForm(f=>({...f,name:e.target.value}))} required/>
+                  </div>
+                  <div className="form-group">
+                    <label className="label">Icon (emoji)</label>
+                    <input className="input" value={solForm.icon} onChange={e=>setSolForm(f=>({...f,icon:e.target.value}))} maxLength={2}/>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="label">Color</label>
+                  <input type="color" value={solForm.color} onChange={e=>setSolForm(f=>({...f,color:e.target.value}))} style={{width:50,height:34,borderRadius:'var(--radius-sm)',border:'1px solid var(--border)',cursor:'pointer',padding:2}}/>
+                </div>
+                <button type="submit" className="btn btn-primary">Add Solution</button>
+              </form>
+            </div>
+          )}
+
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12}}>
-            {solutions.length===0&&<div className="card"><div className="empty-state"><h3>No solutions yet</h3>{isAdmin&&<p>Click Seed Defaults</p>}</div></div>}
+            {solutions.length===0&&<div className="card"><div className="empty-state"><h3>No solutions yet</h3>{isAdmin&&<p>Click Seed Defaults or Add Solution</p>}</div></div>}
             {solutions.map(s=>(
               <div key={s.id} className="card" style={{textAlign:'center',padding:'20px 16px'}}>
                 <div style={{fontSize:36,marginBottom:8}}>{s.icon}</div>

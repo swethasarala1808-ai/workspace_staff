@@ -27,6 +27,7 @@ export default function MeetingsPage() {
   const { user, API } = useAuth();
   const [meetings, setMeetings] = useState([]);
   const [recurring, setRecurring] = useState([]);
+  const [depts, setDepts] = useState([]);
   const [view, setView] = useState('upcoming');
   const [showForm, setShowForm] = useState(false);
   const [showRecurForm, setShowRecurForm] = useState(false);
@@ -41,6 +42,12 @@ export default function MeetingsPage() {
   const [form, setForm] = useState(defaultForm);
 
   const showMsg = (m) => { setMsg(m); setTimeout(()=>setMsg(''),3500); };
+
+  useEffect(() => {
+    axios.get(`${API}/departments`).then(r => setDepts(r.data)).catch(() => {
+      setDepts([{name:'Deployment'},{name:'Functional'},{name:'Marketing'},{name:'Research'}]);
+    });
+  }, [API]);
 
   const fetchAll = () => {
     axios.get(`${API}/meetings?view=${view}`).then(r=>setMeetings(r.data)).catch(()=>{});
@@ -232,7 +239,7 @@ export default function MeetingsPage() {
             <div className="form-group">
               <label className="label">Invite</label>
               <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                {[['all','Everyone'],['dept:Deployment','Deployment'],['dept:Functional','Functional'],['dept:Marketing','Marketing'],['dept:Research','Research']].map(([val,label])=>(
+                {[['all','Everyone'], ...depts.map(d=>[`dept:${d.name}`, d.name])].map(([val,label])=>(
                   <button key={val} type="button" onClick={()=>toggleAttendee(val)}
                     className={`btn btn-sm`}
                     style={{background:form.attendees.includes(val)?'var(--navy)':'white',color:form.attendees.includes(val)?'var(--mint)':'var(--gray-400)',border:`1px solid ${form.attendees.includes(val)?'var(--navy)':'var(--border)'}`}}>

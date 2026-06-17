@@ -22,7 +22,13 @@ export default function Dashboard() {
   const [quoteForm, setQuoteForm] = useState({ text:'', attr:'' });
   const [annForm, setAnnForm] = useState({ type:'welcome', title:'', message:'', person_name:'', person_dept:'', person_role:'' });
   const [annMsg, setAnnMsg] = useState('');
-  const DEPTS = ['Deployment','Functional','Marketing','Research'];
+  const [depts, setDepts] = useState([]);
+
+  useEffect(() => {
+    axios.get(`${API}/departments`).then(r => setDepts(r.data)).catch(() => {
+      setDepts([{name:'Deployment',color:'#3b82f6'},{name:'Functional',color:'#8b5cf6'},{name:'Marketing',color:'#ec4899'},{name:'Research',color:'#10b981'}]);
+    });
+  }, [API]);
 
   const defaultQuote = getDailyQuote();
   const quote = customQuote || defaultQuote;
@@ -178,7 +184,7 @@ export default function Dashboard() {
                   <label className="label">Department</label>
                   <select className="select" value={annForm.person_dept} onChange={e=>setAnnForm(f=>({...f,person_dept:e.target.value}))}>
                     <option value="">Select</option>
-                    {DEPTS.map(d=><option key={d}>{d}</option>)}
+                    {depts.map(d=><option key={d.name}>{d.name}</option>)}
                   </select>
                 </div>
               </div>
