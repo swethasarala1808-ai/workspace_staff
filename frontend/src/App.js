@@ -9,7 +9,7 @@ import ChatPage       from './pages/ChatPage';
 import IdeasPage      from './pages/IdeasPage';
 import PoliciesPage   from './pages/PoliciesPage';
 import MaterialsPage  from './pages/MaterialsPage';
-import EmailPage      from './pages/EmailPage';
+import WhatsAppPage    from './pages/WhatsAppPage';
 import ProfilePage    from './pages/ProfilePage';
 import SeriaPortal    from './pages/SeriaPortal';
 import AdminPage      from './pages/AdminPage';
@@ -49,7 +49,7 @@ function AppRoutes() {
       <Route path="/drive"      element={<PrivateRoute onlyBizaxl><AppLayout><DrivePage/></AppLayout></PrivateRoute>}/>
       <Route path="/meetings"   element={<PrivateRoute onlyBizaxl><AppLayout><MeetingsPage/></AppLayout></PrivateRoute>}/>
       <Route path="/chat"       element={<PrivateRoute onlyBizaxl><AppLayout><ChatPage/></AppLayout></PrivateRoute>}/>
-      <Route path="/email"      element={<PrivateRoute onlyBizaxl><AppLayout><EmailPage/></AppLayout></PrivateRoute>}/>
+      <Route path="/whatsapp"   element={<PrivateRoute onlyBizaxl><AppLayout><WhatsAppPage/></AppLayout></PrivateRoute>}/>
       <Route path="/ideas"      element={<PrivateRoute onlyBizaxl><AppLayout><IdeasPage/></AppLayout></PrivateRoute>}/>
       <Route path="/policies"   element={<PrivateRoute onlyBizaxl><AppLayout><PoliciesPage/></AppLayout></PrivateRoute>}/>
       <Route path="/materials"  element={<PrivateRoute><AppLayout><MaterialsPage/></AppLayout></PrivateRoute>}/>

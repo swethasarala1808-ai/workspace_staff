@@ -32,6 +32,11 @@ export default function AdminPage() {
     showMsg('Role updated'); fetchUsers();
   };
 
+  const updateDepartment = async (id, department) => {
+    await axios.put(`${API}/users/${id}`, { department });
+    showMsg('Department updated'); fetchUsers();
+  };
+
   const deleteUser = async (id, name) => {
     if (!window.confirm(`Delete user "${name}"? This cannot be undone.`)) return;
     await axios.delete(`${API}/users/${id}`);
@@ -176,10 +181,14 @@ export default function AdminPage() {
                   <td style={{color:'var(--gray-400)', fontSize:13}}>{u.email}</td>
                   <td><span className="badge badge-gray" style={{fontSize:12}}>{u.company}</span></td>
                   <td>
-                    {u.department && (
-                      <span className="badge" style={{background:(DEPT_COLORS[u.department]||'#666')+'15', color:DEPT_COLORS[u.department]||'#666', fontSize:12}}>
-                        {u.department}
-                      </span>
+                    {u.company === 'BIZAXL' ? (
+                      <select className="select" style={{width:'auto', height:32, fontSize:12, padding:'4px 8px', color:depts.find(d=>d.name===u.department)?.color||'var(--navy)'}}
+                        value={u.department||''} onChange={e=>updateDepartment(u.id, e.target.value)}>
+                        <option value="">— None —</option>
+                        {depts.map(d=><option key={d.id} value={d.name}>{d.name}</option>)}
+                      </select>
+                    ) : (
+                      <span style={{fontSize:12, color:'var(--gray-400)'}}>—</span>
                     )}
                   </td>
                   <td>
