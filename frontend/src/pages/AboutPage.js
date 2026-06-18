@@ -2,14 +2,26 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../context/AuthContext';
 
-const TABS = ['Mission','Values','Principles','Promise','Team Note'];
+const TABS = ['Mission','What is bizaxl','Values','Principles','Promise','Team Note'];
 
 function EditableText({ value, onSave, multiline, className, style }) {
   const [editing, setEditing] = useState(false);
+  const [hover, setHover] = useState(false);
   const [val, setVal] = useState(value);
   useEffect(() => setVal(value), [value]);
   if (!editing) return (
-    <span style={style} className={className} onClick={() => setEditing(true)} title="Click to edit">
+    <span
+      style={{
+        ...style,
+        cursor:'text',
+        borderBottom: hover ? '1px dashed rgba(20,241,177,0.6)' : '1px dashed transparent',
+        transition:'border-color 0.15s',
+      }}
+      className={className}
+      onClick={() => setEditing(true)}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
       {value}
     </span>
   );
@@ -55,6 +67,21 @@ export default function AboutPage() {
   const updateMission = (key, val) => {
     const updated = { ...content, mission: { ...content.mission, [key]: val } };
     setContent(updated); save(updated);
+  };
+
+  const updateCompany = (key, val) => {
+    const updated = { ...content, company: { ...content.company, [key]: val } };
+    setContent(updated); save(updated);
+  };
+
+  const updateModule = (i, key, val) => {
+    const modules = content.company.modules.map((m, idx) => idx === i ? { ...m, [key]: val } : m);
+    updateCompany('modules', modules);
+  };
+
+  const updateDifferentiator = (i, key, val) => {
+    const differentiators = content.company.differentiators.map((d, idx) => idx === i ? { ...d, [key]: val } : d);
+    updateCompany('differentiators', differentiators);
   };
 
   const updateValue = (i, key, val) => {
@@ -214,6 +241,100 @@ export default function AboutPage() {
                   </span>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WHAT IS BIZAXL */}
+      {tab==='What is bizaxl' && content.company && (
+        <div style={{display:'flex',flexDirection:'column',gap:16}}>
+          <div className="card">
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>What Is bizaxl</p>
+            <div style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>
+              {isAdmin
+                ? <EditableText value={content.company.what_is} onSave={v=>updateCompany('what_is',v)} multiline style={{fontSize:14,color:'var(--gray-400)'}}/>
+                : content.company.what_is}
+            </div>
+          </div>
+
+          <div className="card">
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>Why bizaxl Exists</p>
+            <div style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>
+              {isAdmin
+                ? <EditableText value={content.company.why_exists} onSave={v=>updateCompany('why_exists',v)} multiline style={{fontSize:14,color:'var(--gray-400)'}}/>
+                : content.company.why_exists}
+            </div>
+          </div>
+
+          <div className="card">
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:16}}>The Six Modules</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:12}}>
+              {content.company.modules.map((m,i)=>(
+                <div key={i} style={{background:'var(--gray-100)',borderRadius:'var(--radius)',padding:'14px 16px'}}>
+                  <div style={{fontWeight:700,fontSize:14,marginBottom:4,color:'var(--navy)'}}>
+                    {isAdmin
+                      ? <EditableText value={m.name} onSave={v=>updateModule(i,'name',v)} style={{fontWeight:700}}/>
+                      : m.name}
+                  </div>
+                  <div style={{fontSize:13,color:'var(--gray-400)',lineHeight:1.6}}>
+                    {isAdmin
+                      ? <EditableText value={m.desc} onSave={v=>updateModule(i,'desc',v)} multiline style={{fontSize:13,color:'var(--gray-400)'}}/>
+                      : m.desc}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>Customer Journey</p>
+            <div style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>
+              {isAdmin
+                ? <EditableText value={content.company.customer_journey} onSave={v=>updateCompany('customer_journey',v)} multiline style={{fontSize:14,color:'var(--gray-400)'}}/>
+                : content.company.customer_journey}
+            </div>
+          </div>
+
+          <div className="card">
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>150+ Industries Served</p>
+            <div style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>
+              {isAdmin
+                ? <EditableText value={content.company.industries} onSave={v=>updateCompany('industries',v)} multiline style={{fontSize:14,color:'var(--gray-400)'}}/>
+                : content.company.industries}
+            </div>
+          </div>
+
+          <div style={{background:'var(--navy)',borderRadius:'var(--radius-lg)',padding:24,position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:'linear-gradient(90deg,#14F1B1,#114EFF)'}}/>
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--mint)',marginBottom:16}}>What Sets Us Apart</p>
+            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+              {content.company.differentiators.map((d,i)=>(
+                <div key={i} style={{display:'flex',gap:12}}>
+                  <div style={{width:24,height:24,borderRadius:'50%',background:'rgba(20,241,177,0.15)',border:'1px solid rgba(20,241,177,0.3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:11,color:'var(--mint)',fontWeight:800}}>{i+1}</div>
+                  <div>
+                    <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:2}}>
+                      {isAdmin
+                        ? <EditableText value={d.title} onSave={v=>updateDifferentiator(i,'title',v)} style={{color:'white',fontWeight:700}}/>
+                        : d.title}
+                    </div>
+                    <div style={{fontSize:13,color:'rgba(255,255,255,0.55)',lineHeight:1.6}}>
+                      {isAdmin
+                        ? <EditableText value={d.desc} onSave={v=>updateDifferentiator(i,'desc',v)} multiline style={{fontSize:13,color:'rgba(255,255,255,0.55)'}}/>
+                        : d.desc}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="card">
+            <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>The Company</p>
+            <div style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>
+              {isAdmin
+                ? <EditableText value={content.company.company_info} onSave={v=>updateCompany('company_info',v)} multiline style={{fontSize:14,color:'var(--gray-400)'}}/>
+                : content.company.company_info}
             </div>
           </div>
         </div>

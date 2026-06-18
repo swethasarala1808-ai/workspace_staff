@@ -5,14 +5,6 @@ import { useAuth } from '../context/AuthContext';
 const RATINGS = ['Excellent','Good','Okay','Needs Work','Bad'];
 const RATING_COLOR = { Excellent:'#166534', Good:'#1d4ed8', Okay:'#92400e', 'Needs Work':'#c2410c', Bad:'#991b1b' };
 
-const VALUES = [
-  { icon:'🔍', title:'Truth & Honesty', desc:'We are transparent about what our software can and cannot do. We never over-promise.' },
-  { icon:'❤️', title:'Compassion & Empathy', desc:'We listen with care and respond with kindness. Every customer is a fellow human.' },
-  { icon:'🙏', title:'Respect', desc:'We respect the courage of every MSME owner. We never talk down to anyone.' },
-  { icon:'⚡', title:'Reliability', desc:'When a small business depends on us, we commit to being consistently dependable.' },
-  { icon:'🌱', title:'Empowerment', desc:'We help customers become stronger and more confident in their own business.' },
-];
-
 export default function SeriaPortal() {
   const { user, logout, API } = useAuth();
   const [tab, setTab] = useState('materials');
@@ -23,9 +15,11 @@ export default function SeriaPortal() {
   const [submitted, setSubmitted] = useState({});
   const [leadForm, setLeadForm] = useState({ title:'', source:'LinkedIn', contact_name:'', contact_info:'', company:'', description:'' });
   const [leadMsg, setLeadMsg] = useState('');
+  const [aboutContent, setAboutContent] = useState(null);
 
   useEffect(()=>{
     axios.get(`${API}/materials/library`).then(r=>setMaterials(r.data)).catch(()=>{});
+    axios.get(`${API}/about_content`).then(r=>setAboutContent(r.data)).catch(()=>{});
   },[]);
 
   const submitFeedback = async () => {
@@ -162,30 +156,84 @@ export default function SeriaPortal() {
 
         {/* About */}
         {tab==='about' && (
+          aboutContent ? (
           <div>
             <div style={{background:'var(--navy)', borderRadius:16, padding:40, marginBottom:24, position:'relative', overflow:'hidden'}}>
               <div style={{position:'absolute', top:0, left:0, right:0, height:3, background:'linear-gradient(90deg,#14F1B1,#114EFF,#091526)'}}/>
               <img src="/static/logo.svg" alt="bizaxl" style={{height:28, filter:'brightness(0) invert(1)', marginBottom:20}}/>
               <h2 style={{color:'white', fontSize:24, fontWeight:700, lineHeight:1.4, marginBottom:8}}>
-                We build confidence, <span style={{color:'#14F1B1'}}>dignity, and growth.</span>
+                {aboutContent.mission.headline} <span style={{color:'#14F1B1'}}>{aboutContent.mission.subheadline}</span>
               </h2>
-              <p style={{color:'rgba(255,255,255,0.5)', fontSize:14}}>For every MSME in India.</p>
-              <div style={{marginTop:20, display:'flex', gap:20}}>
-                <a href="mailto:markcom@bizaxl.com" style={{color:'#14F1B1', fontSize:13, fontWeight:600}}>markcom@bizaxl.com</a>
-                <a href="tel:+919886711156" style={{color:'#14F1B1', fontSize:13, fontWeight:600}}>+91 98867 11156</a>
-                <a href="https://bizaxl.com" target="_blank" rel="noreferrer" style={{color:'#14F1B1', fontSize:13, fontWeight:600}}>bizaxl.com</a>
+              <p style={{color:'rgba(255,255,255,0.5)', fontSize:14, whiteSpace:'pre-wrap', maxWidth:640}}>{aboutContent.mission.body}</p>
+              <div style={{marginTop:20, display:'flex', gap:20, flexWrap:'wrap'}}>
+                <a href={`mailto:${aboutContent.mission.email}`} style={{color:'#14F1B1', fontSize:13, fontWeight:600}}>{aboutContent.mission.email}</a>
+                <a href={`tel:${aboutContent.mission.phone}`} style={{color:'#14F1B1', fontSize:13, fontWeight:600}}>{aboutContent.mission.phone}</a>
+                <a href={`https://${aboutContent.mission.website}`} target="_blank" rel="noreferrer" style={{color:'#14F1B1', fontSize:13, fontWeight:600}}>{aboutContent.mission.website}</a>
               </div>
             </div>
+
+            {aboutContent.company && (
+              <div style={{display:'flex', flexDirection:'column', gap:16, marginBottom:24}}>
+                <div className="card">
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>What Is bizaxl</p>
+                  <p style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>{aboutContent.company.what_is}</p>
+                </div>
+                <div className="card">
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>Why bizaxl Exists</p>
+                  <p style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>{aboutContent.company.why_exists}</p>
+                </div>
+                <div className="card">
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:16}}>The Six Modules</p>
+                  <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(240px,1fr))', gap:12}}>
+                    {aboutContent.company.modules.map((m,i)=>(
+                      <div key={i} style={{background:'var(--gray-100)', borderRadius:'var(--radius)', padding:'14px 16px'}}>
+                        <div style={{fontWeight:700, fontSize:14, marginBottom:4, color:'var(--navy)'}}>{m.name}</div>
+                        <div style={{fontSize:13, color:'var(--gray-400)', lineHeight:1.6}}>{m.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="card">
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>Customer Journey</p>
+                  <p style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>{aboutContent.company.customer_journey}</p>
+                </div>
+                <div className="card">
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>150+ Industries Served</p>
+                  <p style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>{aboutContent.company.industries}</p>
+                </div>
+                <div style={{background:'var(--navy)', borderRadius:'var(--radius-lg)', padding:24, position:'relative', overflow:'hidden'}}>
+                  <div style={{position:'absolute', top:0, left:0, right:0, height:3, background:'linear-gradient(90deg,#14F1B1,#114EFF)'}}/>
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--mint)',marginBottom:16}}>What Sets Us Apart</p>
+                  <div style={{display:'flex', flexDirection:'column', gap:14}}>
+                    {aboutContent.company.differentiators.map((d,i)=>(
+                      <div key={i} style={{display:'flex', gap:12}}>
+                        <div style={{width:24, height:24, borderRadius:'50%', background:'rgba(20,241,177,0.15)', border:'1px solid rgba(20,241,177,0.3)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, fontSize:11, color:'var(--mint)', fontWeight:800}}>{i+1}</div>
+                        <div>
+                          <div style={{fontWeight:700, fontSize:14, color:'white', marginBottom:2}}>{d.title}</div>
+                          <div style={{fontSize:13, color:'rgba(255,255,255,0.55)', lineHeight:1.6}}>{d.desc}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="card">
+                  <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:14}}>The Company</p>
+                  <p style={{fontSize:14,lineHeight:1.9,color:'var(--gray-400)'}}>{aboutContent.company.company_info}</p>
+                </div>
+              </div>
+            )}
+
             <div className="card">
-              <div style={{fontSize:11, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--gray-400)', marginBottom:20}}>Our 5 Core Values</div>
-              {VALUES.map((v,i)=>(
-                <div key={v.title} style={{display:'flex', gap:14, padding:'14px 0', borderBottom: i<VALUES.length-1?'1px solid var(--border)':'none'}}>
+              <div style={{fontSize:11, fontWeight:700, letterSpacing:'1px', textTransform:'uppercase', color:'var(--gray-400)', marginBottom:20}}>Our Core Values</div>
+              {aboutContent.values.map((v,i)=>(
+                <div key={v.title} style={{display:'flex', gap:14, padding:'14px 0', borderBottom: i<aboutContent.values.length-1?'1px solid var(--border)':'none'}}>
                   <div style={{width:36, height:36, background:'var(--gray-100)', borderRadius:'var(--radius)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, flexShrink:0}}>{v.icon}</div>
                   <div><div style={{fontWeight:700, marginBottom:3}}>{v.title}</div><p style={{fontSize:13, color:'var(--gray-400)', lineHeight:1.6}}>{v.desc}</p></div>
                 </div>
               ))}
             </div>
           </div>
+          ) : <div className="spinner"/>
         )}
       </div>
     </div>
