@@ -25,8 +25,8 @@ def serialize_file(f, uid=None):
         "owner_id": f.get("owner_id",""),
         "owner_name": f.get("owner_name",""),
         "owner_dept": f.get("owner_dept",""),
-        "shared_with": f.get("shared_with","all"),
-        "dept": f.get("dept",""),
+        "shared_with": f.get("shared_with","everyone"),
+        "depts": f.get("depts",[]),
         "url": f.get("url",""),
         "starred": uid in f.get("starred_by",[]) if uid else False,
         "created_at": f["created_at"].strftime("%d %b %Y") if hasattr(f.get("created_at"),"strftime") else "",
@@ -38,12 +38,37 @@ def human_size(b):
     if b < 1024**2: return f"{b/1024:.1f} KB"
     return f"{b/1024**2:.1f} MB"
 
+def normalize_sharing(data, user):
+    """
+    Returns (shared_with, depts) handling both the new format and legacy values.
+    shared_with: 'everyone' | 'private' | 'depts'
+    depts: list of department names (only meaningful when shared_with == 'depts')
+    """
+    sw = data.get("shared_with", "everyone")
+    depts = data.get("depts", [])
+
+    # Backward compatibility with old values
+    if sw == "all":
+        sw = "everyone"
+    elif sw == "dept":
+        sw = "depts"
+        if not depts:
+            depts = [user.get("department", "")] if user.get("department") else []
+
+    if sw == "depts" and not isinstance(depts, list):
+        depts = [depts] if depts else []
+
+    return sw, depts
+
 def can_access(f, uid, user):
-    if f.get("owner_id") == uid or user.get("role") == "admin": return True
-    sw = f.get("shared_with","all")
-    if sw == "all": return True
-    if sw == "dept" and f.get("dept") == user.get("department",""): return True
-    return False
+    if f.get("owner_id") == uid or user.get("role") == "admin":
+        return True
+    sw = f.get("shared_with", "everyone")
+    if sw == "everyone":
+        return True
+    if sw == "depts":
+        return user.get("department", "") in f.get("depts", [])
+    return False  # private
 
 @drive_bp.route("/drive/files", methods=["GET"])
 @jwt_required()
@@ -60,15 +85,25 @@ def list_files():
     elif view == "starred":
         q = {"starred_by": uid}
     elif view == "shared":
-        q = {"shared_with": {"$in":["all","dept"]}, "owner_id": {"$ne": uid}}
+        q = {
+            "owner_id": {"$ne": uid},
+            "$or": [
+                {"shared_with": "everyone"},
+                {"shared_with": "depts", "depts": dept},
+                {"shared_with": "all"},          # legacy
+                {"shared_with": "dept", "dept": dept},  # legacy
+            ],
+        }
     else:
         if role == "admin":
             q = {"parent_id": parent_id}
         else:
             q = {"parent_id": parent_id, "$or": [
                 {"owner_id": uid},
-                {"shared_with": "all"},
-                {"shared_with": "dept", "dept": dept},
+                {"shared_with": "everyone"},
+                {"shared_with": "depts", "depts": dept},
+                {"shared_with": "all"},          # legacy
+                {"shared_with": "dept", "dept": dept},  # legacy
             ]}
 
     files = list(drive_col.find(q).sort([("type",-1),("created_at",-1)]))
@@ -80,6 +115,7 @@ def upload_file():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
+    shared_with, depts = normalize_sharing(data, user)
 
     if data.get("type") == "folder":
         folder = {
@@ -88,8 +124,8 @@ def upload_file():
             "parent_id": data.get("parent_id",""),
             "owner_id": uid, "owner_name": user["name"],
             "owner_dept": user.get("department",""),
-            "shared_with": data.get("shared_with","all"),
-            "dept": user.get("department",""),
+            "shared_with": shared_with,
+            "depts": depts,
             "url": "", "starred_by": [],
             "created_at": datetime.datetime.utcnow(),
         }
@@ -120,8 +156,8 @@ def upload_file():
         "parent_id": data.get("parent_id",""),
         "owner_id": uid, "owner_name": user["name"],
         "owner_dept": user.get("department",""),
-        "shared_with": data.get("shared_with","all"),
-        "dept": user.get("department",""),
+        "shared_with": shared_with,
+        "depts": depts,
         "url": url, "starred_by": [],
         "created_at": datetime.datetime.utcnow(),
     }
@@ -169,8 +205,11 @@ def rename_file(fid):
 @drive_bp.route("/drive/files/<fid>/share", methods=["PUT"])
 @jwt_required()
 def share_file(fid):
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
-    drive_col.update_one({"_id": ObjectId(fid)}, {"$set":{"shared_with": data.get("shared_with","all")}})
+    shared_with, depts = normalize_sharing(data, user)
+    drive_col.update_one({"_id": ObjectId(fid)}, {"$set":{"shared_with": shared_with, "depts": depts}})
     return jsonify({"ok":True}), 200
 
 @drive_bp.route("/drive/stats", methods=["GET"])
@@ -179,7 +218,7 @@ def drive_stats():
     uid = get_jwt_identity()
     total = drive_col.count_documents({})
     mine = drive_col.count_documents({"owner_id": uid})
-    shared = drive_col.count_documents({"shared_with":"all"})
+    shared = drive_col.count_documents({"shared_with": {"$in": ["everyone", "all"]}})
     starred = drive_col.count_documents({"starred_by": uid})
     my_files = list(drive_col.find({"owner_id": uid, "type":"file"}))
     used = sum(f.get("size",0) for f in my_files)

@@ -9,7 +9,6 @@ const NAV = [
   { to:'/drive',      label:'Drive',        icon:'M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z' },
   { to:'/meetings',   label:'Meetings',     icon:'M15 10l4.553-2.277A1 1 0 0121 8.624v6.752a1 1 0 01-1.447.899L15 14M3 8a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8z' },
   { to:'/chat',       label:'Chat',         icon:'M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z' },
-  { to:'/whatsapp',   label:'WhatsApp',     icon:'M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z' },
   { to:'/ideas',      label:'Ideas',        icon:'M12 2a7 7 0 017 7c0 2.38-1.19 4.47-3 5.74V17a1 1 0 01-1 1H9a1 1 0 01-1-1v-2.26C6.19 13.47 5 11.38 5 9a7 7 0 017-7z' },
   { to:'/policies',   label:'Policies',     icon:'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
   { to:'/materials',  label:'Materials',    icon:'M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z' },
