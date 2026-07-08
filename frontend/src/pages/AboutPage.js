@@ -155,12 +155,12 @@ export default function AboutPage() {
     setContent(r.data); setMsg('Reset to defaults'); setTimeout(() => setMsg(''), 2000);
   };
 
-  if (!content) return <div className="page-container"><div className="spinner"/></div>;
+  if (!content) return <div style={{padding:32}}><div className="spinner"/></div>;
 
   const editHint = isAdmin ? { cursor:'text', borderBottom:'1px dashed rgba(20,241,177,0.4)', display:'inline' } : {};
 
   return (
-    <div className="page-container">
+    <div style={{padding:'28px 40px', width:'100%', boxSizing:'border-box', minHeight:'100vh'}}>
       {/* Hero */}
       <div style={{background:'var(--navy)',borderRadius:16,padding:'44px 48px',marginBottom:24,position:'relative',overflow:'hidden'}}>
         <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:'linear-gradient(90deg,#14F1B1,#114EFF,#091526)'}}/>
@@ -176,7 +176,7 @@ export default function AboutPage() {
           )}
         </div>
         <p style={{fontSize:11,fontWeight:700,letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--mint)',marginBottom:12}}>Our Mission</p>
-        <h1 style={{fontSize:24,fontWeight:700,color:'white',lineHeight:1.5,maxWidth:620,marginBottom:12}}>
+        <h1 style={{fontSize:26,fontWeight:700,color:'white',lineHeight:1.5,marginBottom:12}}>
           {isAdmin
             ? <EditableText value={content.mission.headline} onSave={v=>updateMission('headline',v)} style={{color:'white',fontSize:24,fontWeight:700}} />
             : content.mission.headline}
@@ -187,7 +187,7 @@ export default function AboutPage() {
               : content.mission.subheadline}
           </span>
         </h1>
-        <div style={{color:'rgba(255,255,255,0.55)',fontSize:14,maxWidth:580,lineHeight:1.8,marginBottom:24,whiteSpace:'pre-wrap'}}>
+        <div style={{color:'rgba(255,255,255,0.55)',fontSize:14,lineHeight:1.8,marginBottom:24,whiteSpace:'pre-wrap'}}>
           {isAdmin
             ? <EditableText value={content.mission.body} onSave={v=>updateMission('body',v)} multiline style={{color:'rgba(255,255,255,0.55)',fontSize:14}}/>
             : content.mission.body}
@@ -269,7 +269,7 @@ export default function AboutPage() {
 
           <div className="card">
             <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--gray-400)',marginBottom:16}}>The Six Modules</p>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:12}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:12}}>
               {content.company.modules.map((m,i)=>(
                 <div key={i} style={{background:'var(--gray-100)',borderRadius:'var(--radius)',padding:'14px 16px'}}>
                   <div style={{fontWeight:700,fontSize:14,marginBottom:4,color:'var(--navy)'}}>
@@ -308,7 +308,7 @@ export default function AboutPage() {
           <div style={{background:'var(--navy)',borderRadius:'var(--radius-lg)',padding:24,position:'relative',overflow:'hidden'}}>
             <div style={{position:'absolute',top:0,left:0,right:0,height:3,background:'linear-gradient(90deg,#14F1B1,#114EFF)'}}/>
             <p style={{fontSize:11,fontWeight:700,letterSpacing:'1px',textTransform:'uppercase',color:'var(--mint)',marginBottom:16}}>What Sets Us Apart</p>
-            <div style={{display:'flex',flexDirection:'column',gap:14}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:14}}>
               {content.company.differentiators.map((d,i)=>(
                 <div key={i} style={{display:'flex',gap:12}}>
                   <div style={{width:24,height:24,borderRadius:'50%',background:'rgba(20,241,177,0.15)',border:'1px solid rgba(20,241,177,0.3)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,fontSize:11,color:'var(--mint)',fontWeight:800}}>{i+1}</div>
@@ -342,7 +342,7 @@ export default function AboutPage() {
 
       {/* VALUES */}
       {tab==='Values' && (
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
+        <div style={{display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(420px,1fr))', gap:12}}>
           {content.values.map((v,i)=>(
             <div key={i} className="card" style={{display:'flex',gap:16,alignItems:'flex-start'}}>
               <div style={{width:44,height:44,background:'var(--gray-100)',borderRadius:'var(--radius)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
@@ -368,7 +368,7 @@ export default function AboutPage() {
             </div>
           ))}
           {isAdmin && (
-            <button onClick={addValue} className="btn btn-outline" style={{alignSelf:'flex-start'}}>+ Add Value</button>
+            <button onClick={addValue} className="btn btn-outline" style={{alignSelf:'flex-start', gridColumn:'1/-1'}}>+ Add Value</button>
           )}
         </div>
       )}
