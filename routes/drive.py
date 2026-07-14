@@ -27,6 +27,8 @@ def serialize_file(f, uid=None):
         "owner_dept": f.get("owner_dept",""),
         "shared_with": f.get("shared_with","everyone"),
         "depts": f.get("depts",[]),
+        "people": f.get("people",[]),
+        "people_names": f.get("people_names",[]),
         "url": f.get("url",""),
         "starred": uid in f.get("starred_by",[]) if uid else False,
         "created_at": f["created_at"].strftime("%d %b %Y") if hasattr(f.get("created_at"),"strftime") else "",
@@ -39,35 +41,26 @@ def human_size(b):
     return f"{b/1024**2:.1f} MB"
 
 def normalize_sharing(data, user):
-    """
-    Returns (shared_with, depts) handling both the new format and legacy values.
-    shared_with: 'everyone' | 'private' | 'depts'
-    depts: list of department names (only meaningful when shared_with == 'depts')
-    """
     sw = data.get("shared_with", "everyone")
     depts = data.get("depts", [])
-
-    # Backward compatibility with old values
-    if sw == "all":
-        sw = "everyone"
+    people = data.get("people", [])
+    if sw == "all": sw = "everyone"
     elif sw == "dept":
         sw = "depts"
-        if not depts:
-            depts = [user.get("department", "")] if user.get("department") else []
-
+        if not depts: depts = [user.get("department","")] if user.get("department") else []
     if sw == "depts" and not isinstance(depts, list):
         depts = [depts] if depts else []
-
-    return sw, depts
+    if sw == "people" and not isinstance(people, list):
+        people = [people] if people else []
+    return sw, depts, people
 
 def can_access(f, uid, user):
     if f.get("owner_id") == uid or user.get("role") == "admin":
         return True
     sw = f.get("shared_with", "everyone")
-    if sw == "everyone":
-        return True
-    if sw == "depts":
-        return user.get("department", "") in f.get("depts", [])
+    if sw == "everyone": return True
+    if sw == "depts": return user.get("department","") in f.get("depts",[])
+    if sw == "people": return uid in f.get("people",[])
     return False  # private
 
 @drive_bp.route("/drive/files", methods=["GET"])
@@ -115,7 +108,7 @@ def upload_file():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
-    shared_with, depts = normalize_sharing(data, user)
+    shared_with, depts, people = normalize_sharing(data, user)
 
     if data.get("type") == "folder":
         folder = {
@@ -124,8 +117,7 @@ def upload_file():
             "parent_id": data.get("parent_id",""),
             "owner_id": uid, "owner_name": user["name"],
             "owner_dept": user.get("department",""),
-            "shared_with": shared_with,
-            "depts": depts,
+            "shared_with": shared_with, "depts": depts, "people": people,
             "url": "", "starred_by": [],
             "created_at": datetime.datetime.utcnow(),
         }
@@ -156,8 +148,7 @@ def upload_file():
         "parent_id": data.get("parent_id",""),
         "owner_id": uid, "owner_name": user["name"],
         "owner_dept": user.get("department",""),
-        "shared_with": shared_with,
-        "depts": depts,
+        "shared_with": shared_with, "depts": depts, "people": people,
         "url": url, "starred_by": [],
         "created_at": datetime.datetime.utcnow(),
     }
@@ -208,9 +199,24 @@ def share_file(fid):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     data = request.json
-    shared_with, depts = normalize_sharing(data, user)
-    drive_col.update_one({"_id": ObjectId(fid)}, {"$set":{"shared_with": shared_with, "depts": depts}})
+    shared_with, depts, people = normalize_sharing(data, user)
+    drive_col.update_one({"_id": ObjectId(fid)}, {"$set":{"shared_with": shared_with, "depts": depts, "people": people}})
     return jsonify({"ok":True}), 200
+
+@drive_bp.route("/drive/users", methods=["GET"])
+@jwt_required()
+def drive_get_users():
+    """Return all registered users for the people-picker sharing UI."""
+    uid = get_jwt_identity()
+    me = users_col.find_one({"_id": ObjectId(uid)})
+    company = me.get("company","BIZAXL")
+    all_users = list(users_col.find({"company": company}, {"name":1,"department":1,"email":1}))
+    return jsonify([{
+        "id": str(u["_id"]),
+        "name": u["name"],
+        "department": u.get("department",""),
+        "email": u.get("email",""),
+    } for u in all_users if str(u["_id"]) != uid]), 200
 
 @drive_bp.route("/drive/stats", methods=["GET"])
 @jwt_required()

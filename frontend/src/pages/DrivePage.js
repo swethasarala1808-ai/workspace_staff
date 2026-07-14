@@ -24,18 +24,20 @@ function humanSize(b){
 function normalizeShare(f, myDept) {
   let sw = f.shared_with;
   let depts = f.depts || [];
+  let people = f.people || [];
   if (sw === 'all') sw = 'everyone';
   if (sw === 'dept') { sw = 'depts'; depts = depts.length ? depts : (myDept ? [myDept] : []); }
-  return { sw, depts };
+  return { sw, depts, people };
 }
 
 function shareLabel(f, myDept) {
-  const { sw, depts } = normalizeShare(f, myDept);
+  const { sw, depts, people } = normalizeShare(f, myDept);
   if (sw === 'everyone') return { text:'Everyone', bg:'rgba(20,241,177,0.1)', color:'#059669' };
   if (sw === 'private') return { text:'Private', bg:'var(--gray-100)', color:'var(--gray-400)' };
+  if (sw === 'people') return { text: people.length ? `${people.length} people` : 'No one', bg:'#fdf4ff', color:'#7c3aed' };
   if (sw === 'depts') {
-    if (depts.length === 1) return { text:depts[0], bg:'#eff6ff', color:'var(--blue)' };
-    if (depts.length > 1) return { text:`${depts.length} depts`, bg:'#eff6ff', color:'var(--blue)' };
+    if (depts.length === 1) return { text:depts[0], bg:'#eff6ff', color:'#1d4ed8' };
+    if (depts.length > 1) return { text:`${depts.length} depts`, bg:'#eff6ff', color:'#1d4ed8' };
     return { text:'No one', bg:'var(--gray-100)', color:'var(--gray-400)' };
   }
   return { text:'Private', bg:'var(--gray-100)', color:'var(--gray-400)' };
@@ -45,6 +47,7 @@ export default function DrivePage() {
   const { user, API } = useAuth();
   const [files, setFiles] = useState([]);
   const [depts, setDepts] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
   const [stats, setStats] = useState({});
   const [view, setView] = useState('all');
   const [parentId, setParentId] = useState('');
@@ -56,14 +59,15 @@ export default function DrivePage() {
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [folderName, setFolderName] = useState('New Folder');
   const [shareTarget, setShareTarget] = useState(null);
-  const [shareDraft, setShareDraft] = useState({ sw:'everyone', depts:[] });
+  const [shareDraft, setShareDraft] = useState({ sw:'everyone', depts:[], people:[] });
   const [renaming, setRenaming] = useState(null);
   const [renameName, setRenameName] = useState('');
-  const [uploadSharing, setUploadSharing] = useState({ sw:'everyone', depts:[] });
+  const [uploadSharing, setUploadSharing] = useState({ sw:'everyone', depts:[], people:[] });
   const [showUploadShare, setShowUploadShare] = useState(false);
   const fileRef = useRef();
   const dropRef = useRef();
   const showMsg = (m) => { setMsg(m); setTimeout(()=>setMsg(''),3000); };
+  const deptColor = (name) => depts.find(d=>d.name===name)?.color || '#71717b';
 
   const fetchFiles = () => {
     axios.get(`${API}/drive/files?parent_id=${parentId}&view=${view}`).then(r=>setFiles(r.data)).catch(()=>{});
@@ -73,13 +77,22 @@ export default function DrivePage() {
     setDepts([{name:'Deployment'},{name:'Functional'},{name:'Marketing'},{name:'Research'}]);
   });
   useEffect(()=>{ fetchFiles(); },[parentId, view]);
-  useEffect(()=>{ fetchDepts(); },[]);
+  useEffect(()=>{ fetchDepts(); axios.get(`${API}/drive/users`).then(r=>setAllUsers(r.data)).catch(()=>{}); },[API]); // eslint-disable-line
 
   const buildSharePayload = (draft) => {
     if (draft.sw === 'everyone') return { shared_with:'everyone' };
     if (draft.sw === 'private') return { shared_with:'private' };
     if (draft.sw === 'mydept') return { shared_with:'depts', depts: user.department ? [user.department] : [] };
-    return { shared_with:'depts', depts: draft.depts };
+    if (draft.sw === 'people') return { shared_with:'people', people: draft.people||[] };
+    return { shared_with:'depts', depts: draft.depts||[] };
+  };
+
+  const toggleDraftPerson = (uid) => {
+    setShareDraft(d => ({ ...d, people: (d.people||[]).includes(uid) ? d.people.filter(x=>x!==uid) : [...(d.people||[]), uid] }));
+  };
+
+  const toggleUploadPerson = (uid) => {
+    setUploadSharing(d => ({ ...d, people: (d.people||[]).includes(uid) ? d.people.filter(x=>x!==uid) : [...(d.people||[]), uid] }));
   };
 
   const uploadFiles = async (selectedFiles) => {
@@ -137,10 +150,10 @@ export default function DrivePage() {
   };
 
   const openShareModal = (f) => {
-    const { sw, depts: fdepts } = normalizeShare(f, user.department);
+    const { sw, depts: fdepts, people: fpeople } = normalizeShare(f, user.department);
     let draftSw = sw;
     if (sw === 'depts' && fdepts.length === 1 && fdepts[0] === user.department) draftSw = 'mydept';
-    setShareDraft({ sw: draftSw, depts: sw === 'depts' ? fdepts : [] });
+    setShareDraft({ sw: draftSw, depts: sw==='depts'?fdepts:[], people: sw==='people'?(fpeople||[]):[] });
     setShareTarget(f);
   };
 
@@ -151,10 +164,7 @@ export default function DrivePage() {
   };
 
   const toggleDraftDept = (name) => {
-    setShareDraft(d => ({
-      ...d,
-      depts: d.depts.includes(name) ? d.depts.filter(x=>x!==name) : [...d.depts, name],
-    }));
+    setShareDraft(d => ({ ...d, depts: (d.depts||[]).includes(name) ? d.depts.filter(x=>x!==name) : [...(d.depts||[]), name] }));
   };
 
   const renameFile = async (id) => {
@@ -176,41 +186,77 @@ export default function DrivePage() {
     {id:'starred', label:'Starred'},
   ];
 
-  const SharingPicker = ({ draft, setDraft }) => (
+  const SharingPicker = ({ draft, setDraft, isUpload }) => {
+    const personToggle = isUpload ? toggleUploadPerson : toggleDraftPerson;
+    const personList = draft.people || [];
+    return (
     <div>
       {[
         ['everyone','Everyone','All staff across bizaxl & Seria'],
         ['mydept', user.department ? `My Department (${user.department})` : 'My Department', 'Only people in your own department'],
         ['depts','Specific Departments','Pick one or more departments who can access this'],
+        ['people','Specific People','Pick individual people from the registered staff list'],
         ['private','Only Me','Private — only you can see it'],
       ].map(([val,label,desc])=>(
         <div key={val} onClick={()=>setDraft(d=>({...d, sw:val}))}
-          style={{padding:'12px 14px',borderRadius:'var(--radius)',marginBottom:8,cursor:'pointer',
+          style={{padding:'11px 13px',borderRadius:'var(--radius)',marginBottom:7,cursor:'pointer',
             background:draft.sw===val?'rgba(20,241,177,0.06)':'white',
             border:`1.5px solid ${draft.sw===val?'var(--mint)':'var(--border)'}`,
-            transition:'all 0.15s'}}>
-          <div style={{fontWeight:600,fontSize:14}}>{label}</div>
-          <div style={{fontSize:12,color:'var(--gray-400)'}}>{desc}</div>
+            transition:'all 0.15s',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
+          <div>
+            <div style={{fontWeight:600,fontSize:13}}>{label}</div>
+            <div style={{fontSize:11,color:'var(--gray-400)'}}>{desc}</div>
+          </div>
+          {draft.sw===val && <span style={{color:'var(--mint)',fontSize:14,fontWeight:700}}>✓</span>}
         </div>
       ))}
       {draft.sw === 'depts' && (
-        <div style={{marginTop:6, marginBottom:10, paddingLeft:14}}>
-          <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
-            {depts.map(d=>(
-              <button key={d.name} type="button" onClick={()=>toggleDraftDept(d.name)}
-                style={{padding:'5px 12px', borderRadius:20, border:`1px solid ${draft.depts.includes(d.name)?'var(--mint)':'var(--border)'}`,
-                  background:draft.depts.includes(d.name)?'rgba(20,241,177,0.1)':'white',
-                  color:draft.depts.includes(d.name)?'#059669':'var(--gray-400)',
-                  cursor:'pointer', fontSize:13, fontWeight:500, fontFamily:'DM Sans,sans-serif'}}>
-                {draft.depts.includes(d.name) ? '✓ ' : ''}{d.name}
-              </button>
-            ))}
+        <div style={{marginTop:6,marginBottom:10,paddingLeft:10}}>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
+            {depts.map(d=>{
+              const sel = (draft.depts||[]).includes(d.name);
+              return (
+                <button key={d.name} type="button" onClick={()=>toggleDraftDept(d.name)}
+                  style={{padding:'5px 12px',borderRadius:20,border:`1px solid ${sel?'var(--mint)':'var(--border)'}`,
+                    background:sel?'rgba(20,241,177,0.1)':'white',color:sel?'#059669':'var(--gray-400)',
+                    cursor:'pointer',fontSize:13,fontWeight:500,fontFamily:'DM Sans,sans-serif'}}>
+                  {sel?'✓ ':''}{d.name}
+                </button>
+              );
+            })}
           </div>
-          {draft.depts.length===0 && <p style={{fontSize:12,color:'#d97706',marginTop:8}}>Select at least one department, or no one in those departments will be able to see it.</p>}
+          {(draft.depts||[]).length===0 && <p style={{fontSize:12,color:'#d97706',marginTop:6}}>Select at least one department.</p>}
+        </div>
+      )}
+      {draft.sw === 'people' && (
+        <div style={{marginTop:6,marginBottom:10,maxHeight:220,overflowY:'auto',border:'1px solid var(--border)',borderRadius:'var(--radius)'}}>
+          {allUsers.length===0 ? (
+            <div style={{padding:12,fontSize:13,color:'var(--gray-400)',textAlign:'center'}}>Loading users...</div>
+          ) : allUsers.map(u=>{
+            const sel = personList.includes(u.id);
+            const dcolor = depts.find(d=>d.name===u.department)?.color||'#71717b';
+            return (
+              <div key={u.id} onClick={()=>personToggle(u.id)}
+                style={{display:'flex',alignItems:'center',gap:10,padding:'9px 12px',cursor:'pointer',
+                  background:sel?'rgba(20,241,177,0.05)':'white',borderBottom:'1px solid #f3f4f6',transition:'background 0.1s'}}>
+                <div style={{width:28,height:28,borderRadius:'50%',background:dcolor,color:'white',fontWeight:700,fontSize:11,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {u.name.charAt(0)}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,fontSize:13,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.name}</div>
+                  <div style={{fontSize:11,color:'#9ca3af'}}>{u.department||'—'}</div>
+                </div>
+                <div style={{width:16,height:16,borderRadius:4,border:`2px solid ${sel?'#14F1B1':'#d1d5db'}`,background:sel?'#14F1B1':'white',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                  {sel&&<span style={{fontSize:9,color:'#05133c',fontWeight:900}}>✓</span>}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
-  );
+    );
+  };
 
   return (
     <div className="page-container">
@@ -223,7 +269,7 @@ export default function DrivePage() {
         <div style={{display:'flex',gap:8}}>
           <button className="btn btn-outline" onClick={()=>setShowNewFolder(true)}>New Folder</button>
           <button className="btn btn-outline" onClick={()=>setShowUploadShare(!showUploadShare)}>
-            Sharing: {uploadSharing.sw==='everyone'?'Everyone':uploadSharing.sw==='mydept'?'My Dept':uploadSharing.sw==='private'?'Private':`${uploadSharing.depts.length||0} depts`}
+            Sharing: {uploadSharing.sw==='everyone'?'Everyone':uploadSharing.sw==='mydept'?'My Dept':uploadSharing.sw==='private'?'Private':uploadSharing.sw==='people'?`${(uploadSharing.people||[]).length} people`:`${(uploadSharing.depts||[]).length} dept(s)`}
           </button>
           <button className="btn btn-primary" onClick={()=>fileRef.current.click()} disabled={uploading}>
             {uploading ? `Uploading ${progress}%` : 'Upload Files'}
@@ -241,7 +287,7 @@ export default function DrivePage() {
             <h3 style={{fontWeight:700, fontSize:15}}>Who can see files you upload?</h3>
             <button className="btn btn-outline btn-sm" onClick={()=>setShowUploadShare(false)}>Done</button>
           </div>
-          <SharingPicker draft={uploadSharing} setDraft={setUploadSharing}/>
+          <SharingPicker draft={uploadSharing} setDraft={setUploadSharing} isUpload={true}/>
         </div>
       )}
 

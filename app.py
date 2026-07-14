@@ -11,8 +11,10 @@ BUILD_DIR = os.path.join(BASE_DIR, "static", "build")
 IS_VERCEL = os.environ.get("VERCEL", False)
 UPLOAD_DIR = "/tmp/uploads" if IS_VERCEL else os.path.join(BASE_DIR, "static", "uploads")
 DRIVE_DIR  = "/tmp/drive"   if IS_VERCEL else os.path.join(BASE_DIR, "static", "drive")
+CHAT_DIR  = "/tmp/chat_uploads" if IS_VERCEL else os.path.join(BASE_DIR, "static", "chat_uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(DRIVE_DIR, exist_ok=True)
+os.makedirs(CHAT_DIR, exist_ok=True)
 
 app = Flask(__name__, static_folder=None)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "bizaxl-workspace-secret-key-2024")
@@ -30,6 +32,10 @@ def serve_upload(filename):
 @app.route("/static/drive/<path:filename>")
 def serve_drive_file(filename):
     return send_from_directory(DRIVE_DIR, filename)
+
+@app.route("/static/chat_uploads/<path:filename>")
+def serve_chat_upload(filename):
+    return send_from_directory(CHAT_DIR, filename)
 
 @app.route("/static/<path:filename>")
 def serve_static(filename):
