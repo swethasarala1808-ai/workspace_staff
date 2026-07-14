@@ -59,7 +59,7 @@ def check_channel_access(channel, uid, user):
 
 # ── Messages ─────────────────────────────────────────────────
 
-@chat_bp.route("/chat/messages/<channel>", methods=["GET"])
+@chat_bp.route("/messages/<channel>", methods=["GET"])
 @jwt_required()
 def get_messages(channel):
     uid = get_jwt_identity()
@@ -69,7 +69,7 @@ def get_messages(channel):
     msgs = list(messages_col.find({"channel": channel}).sort("created_at",1).limit(300))
     return jsonify([serialize_msg(m) for m in msgs]), 200
 
-@chat_bp.route("/chat/messages", methods=["POST"])
+@chat_bp.route("/messages", methods=["POST"])
 @jwt_required()
 def send_message():
     uid = get_jwt_identity()
@@ -115,7 +115,7 @@ def send_message():
     msg["_id"] = result.inserted_id
     return jsonify(serialize_msg(msg)), 201
 
-@chat_bp.route("/chat/messages/<msg_id>", methods=["PUT"])
+@chat_bp.route("/messages/<msg_id>", methods=["PUT"])
 @jwt_required()
 def edit_message(msg_id):
     uid = get_jwt_identity()
@@ -127,7 +127,7 @@ def edit_message(msg_id):
     messages_col.update_one({"_id": ObjectId(msg_id)}, {"$set":{"text": data.get("text",""), "edited": True}})
     return jsonify(serialize_msg(messages_col.find_one({"_id": ObjectId(msg_id)}))), 200
 
-@chat_bp.route("/chat/messages/<msg_id>", methods=["DELETE"])
+@chat_bp.route("/messages/<msg_id>", methods=["DELETE"])
 @jwt_required()
 def delete_message(msg_id):
     uid = get_jwt_identity()
@@ -141,7 +141,7 @@ def delete_message(msg_id):
 
 # ── Groups ───────────────────────────────────────────────────
 
-@chat_bp.route("/chat/groups", methods=["GET"])
+@chat_bp.route("/groups", methods=["GET"])
 @jwt_required()
 def get_groups():
     uid = get_jwt_identity()
@@ -152,7 +152,7 @@ def get_groups():
         groups = list(groups_col.find({"members": uid}).sort("created_at",-1))
     return jsonify([serialize_group(g) for g in groups]), 200
 
-@chat_bp.route("/chat/groups", methods=["POST"])
+@chat_bp.route("/groups", methods=["POST"])
 @jwt_required()
 def create_group():
     uid = get_jwt_identity()
@@ -177,7 +177,7 @@ def create_group():
     group["_id"] = r.inserted_id
     return jsonify(serialize_group(group)), 201
 
-@chat_bp.route("/chat/groups/<gid>", methods=["PUT"])
+@chat_bp.route("/groups/<gid>", methods=["PUT"])
 @jwt_required()
 def update_group(gid):
     uid = get_jwt_identity()
@@ -200,7 +200,7 @@ def update_group(gid):
     groups_col.update_one({"_id": ObjectId(gid)}, {"$set": update})
     return jsonify(serialize_group(groups_col.find_one({"_id": ObjectId(gid)}))), 200
 
-@chat_bp.route("/chat/groups/<gid>", methods=["DELETE"])
+@chat_bp.route("/groups/<gid>", methods=["DELETE"])
 @jwt_required()
 def delete_group(gid):
     uid = get_jwt_identity()
@@ -210,7 +210,7 @@ def delete_group(gid):
     messages_col.delete_many({"channel": f"group_{gid}"})
     return jsonify({"ok":True}), 200
 
-@chat_bp.route("/chat/groups/<gid>/members/<mid>", methods=["DELETE"])
+@chat_bp.route("/groups/<gid>/members/<mid>", methods=["DELETE"])
 @jwt_required()
 def remove_member(gid, mid):
     uid = get_jwt_identity()
