@@ -173,6 +173,28 @@ export default function DrivePage() {
     setRenaming(null); fetchFiles();
   };
 
+  const reuploadFile = async (f, file) => {
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        await axios.post(`${API}/drive/files/${f.id}/reupload`, {
+          data: ev.target.result,
+          mime: file.type || f.mime,
+        });
+        fetchFiles(); showMsg(`${f.name} re-uploaded successfully`);
+      } catch(err) { showMsg('Re-upload failed'); }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const triggerReupload = (f) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = f.mime ? f.mime.split('/')[0] + '/*' : '*/*';
+    input.onchange = (e) => { if(e.target.files[0]) reuploadFile(f, e.target.files[0]); };
+    input.click();
+  };
+
   const onDrop = (e) => {
     e.preventDefault();
     dropRef.current?.classList.remove('drag-over');
@@ -369,19 +391,27 @@ export default function DrivePage() {
                 transition:'transform 0.15s,box-shadow 0.15s'}}
                 onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='var(--shadow-md)';}}
                 onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='';}}>
+                {/* File missing warning banner */}
+                {f.url && f.type==='file' && !f.url.startsWith('http') && (
+                  <div id={`missing-check-${f.id}`} style={{display:'none'}}/>
+                )}
                 <div style={{height:110,background:'var(--gray-100)',display:'flex',alignItems:'center',
                   justifyContent:'center',position:'relative',overflow:'hidden'}}
-                  onClick={()=>f.type==='folder'?openFolder(f):(isPreviewable(f.mime)?setPreview(f):window.open(f.url,'_blank'))}>
+                  onClick={()=>f.type==='folder'?openFolder(f):(isPreviewable(f.mime)?setPreview(f):f.url?window.open(f.url,'_blank'):null)}>
                   {isImage(f.mime)&&f.url
-                    ? <img src={f.url} alt={f.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                    : <span style={{fontSize:40}}>{getIcon(f.mime,f.type)}</span>}
-                  <button onClick={e=>{e.stopPropagation();starFile(f.id);}}
-                    style={{position:'absolute',top:6,right:6,background:'rgba(255,255,255,0.9)',
-                      border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',
-                      fontSize:12,display:'flex',alignItems:'center',justifyContent:'center',
-                      boxShadow:'var(--shadow)'}}>
-                    {f.starred?'⭐':'☆'}
-                  </button>
+                    ? <img src={f.url} alt={f.name} style={{width:'100%',height:'100%',objectFit:'cover'}}
+                        onError={e=>{e.target.style.display='none'; e.target.nextSibling.style.display='flex';}}/>
+                    : null}
+                  <span style={{fontSize:40, display:isImage(f.mime)&&f.url?'none':'flex'}}>{getIcon(f.mime,f.type)}</span>
+                  {f.type!=='folder' && (
+                    <button onClick={e=>{e.stopPropagation();starFile(f.id);}}
+                      style={{position:'absolute',top:6,right:6,background:'rgba(255,255,255,0.9)',
+                        border:'none',borderRadius:'50%',width:26,height:26,cursor:'pointer',
+                        fontSize:12,display:'flex',alignItems:'center',justifyContent:'center',
+                        boxShadow:'var(--shadow)'}}>
+                      {f.starred?'⭐':'☆'}
+                    </button>
+                  )}
                 </div>
                 <div style={{padding:'10px 12px'}}>
                   {renaming===f.id ? (
@@ -403,12 +433,12 @@ export default function DrivePage() {
                     </span>
                   </div>
                   <div style={{display:'flex',gap:4}}>
-                    {f.url && (
+                    {f.url && f.type==='file' ? (
                       <a href={f.url} download={f.name} onClick={e=>e.stopPropagation()}
                         className="btn btn-outline btn-sm" style={{fontSize:11,height:26,padding:'4px 8px',flex:1,justifyContent:'center'}}>
                         Download
                       </a>
-                    )}
+                    ) : null}
                     <button onClick={()=>{setRenaming(f.id);setRenameName(f.name);}}
                       className="btn btn-outline btn-sm" style={{fontSize:11,height:26,padding:'4px 8px'}}>✏️</button>
                     <button onClick={()=>openShareModal(f)}
@@ -416,6 +446,16 @@ export default function DrivePage() {
                     <button onClick={()=>deleteFile(f)}
                       className="btn btn-danger btn-sm" style={{fontSize:11,height:26,padding:'4px 8px'}}>🗑</button>
                   </div>
+                  {/* File missing warning */}
+                  {!f.url && f.type==='file' && (
+                    <div style={{marginTop:6, padding:'6px 8px', background:'#fef3c7', borderRadius:'var(--radius)', border:'1px solid #fde68a', display:'flex', alignItems:'center', justifyContent:'space-between', gap:6}}>
+                      <span style={{fontSize:11, color:'#92400e'}}>⚠ File missing</span>
+                      <button onClick={()=>triggerReupload(f)}
+                        style={{fontSize:11, padding:'2px 8px', borderRadius:4, background:'#f59e0b', border:'none', cursor:'pointer', color:'white', fontFamily:'DM Sans,sans-serif', fontWeight:600}}>
+                        Re-upload
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             );})}

@@ -35,6 +35,9 @@ def serve_upload(filename):
 
 @app.route("/static/drive/<path:filename>")
 def serve_drive_file(filename):
+    fpath = os.path.join(DRIVE_DIR, filename)
+    if not os.path.exists(fpath):
+        return jsonify({"error": "File not found on disk. It may have been uploaded before storage was set up. Please re-upload the file."}), 404
     return send_from_directory(DRIVE_DIR, filename)
 
 @app.route("/static/chat_uploads/<path:filename>")

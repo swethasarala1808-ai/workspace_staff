@@ -229,3 +229,34 @@ def drive_stats():
     my_files = list(drive_col.find({"owner_id": uid, "type":"file"}))
     used = sum(f.get("size",0) for f in my_files)
     return jsonify({"total":total,"mine":mine,"shared":shared,"starred":starred,"used":used,"used_str":human_size(used)}), 200
+
+@drive_bp.route("/drive/files/<fid>/reupload", methods=["POST"])
+@jwt_required()
+def reupload_file(fid):
+    """Replace a missing file's content with a new upload."""
+    uid = get_jwt_identity()
+    user = users_col.find_one({"_id": ObjectId(uid)})
+    f = drive_col.find_one({"_id": ObjectId(fid)})
+    if not f: return jsonify({"error":"Not found"}), 404
+    if f.get("owner_id") != uid and user.get("role") != "admin":
+        return jsonify({"error":"Forbidden"}), 403
+    data = request.json or {}
+    b64 = data.get("data","")
+    fname = f.get("name","file")
+    mime = data.get("mime", f.get("mime","application/octet-stream"))
+    if not b64:
+        return jsonify({"error":"No file data"}), 400
+    if "," in b64: b64 = b64.split(",",1)[1]
+    import base64 as b64mod, datetime as dt
+    safe_name = f"{dt.datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{fname}"
+    fpath = os.path.join(DRIVE_DIR, safe_name)
+    try:
+        raw = b64mod.b64decode(b64)
+        size = len(raw)
+        with open(fpath,"wb") as fp: fp.write(raw)
+        url = f"/static/drive/{safe_name}"
+        drive_col.update_one({"_id": ObjectId(fid)}, {"$set":{"url": url, "size": size, "mime": mime}})
+        f = drive_col.find_one({"_id": ObjectId(fid)})
+        return jsonify(serialize_file(f, uid)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
