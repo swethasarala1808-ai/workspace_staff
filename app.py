@@ -16,6 +16,10 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(DRIVE_DIR, exist_ok=True)
 os.makedirs(CHAT_DIR, exist_ok=True)
 
+# Verify dirs exist
+for name, path in [("uploads", UPLOAD_DIR), ("drive", DRIVE_DIR), ("chat_uploads", CHAT_DIR)]:
+    os.makedirs(path, exist_ok=True)
+
 app = Flask(__name__, static_folder=None)
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET", "bizaxl-workspace-secret-key-2024")
 CORS(app, resources={r"/api/*": {"origins": "*"}})

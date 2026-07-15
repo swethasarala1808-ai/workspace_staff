@@ -1,4 +1,11 @@
-from flask import Blueprint, request, jsonify
+#!/usr/bin/env python3
+"""Run this directly on your machine to patch chat routes without needing git."""
+import os, shutil
+
+BASE = os.path.dirname(os.path.abspath(__file__))
+routes_dir = os.path.join(BASE, "routes")
+
+chat_py = '''from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from models.db import messages_col, users_col, db
 from bson import ObjectId
@@ -8,8 +15,8 @@ chat_bp = Blueprint("chat", __name__)
 groups_col = db["chat_groups"]
 
 IS_VERCEL = os.environ.get("VERCEL", False)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-CHAT_UPLOAD_DIR = "/tmp/chat_uploads" if IS_VERCEL else os.path.join(BASE_DIR, "static", "chat_uploads")
+CHAT_UPLOAD_DIR = "/tmp/chat_uploads" if IS_VERCEL else os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static", "chat_uploads")
 os.makedirs(CHAT_UPLOAD_DIR, exist_ok=True)
 
 def serialize_msg(m):
@@ -31,41 +38,39 @@ def serialize_group(g):
     return {
         "id": str(g["_id"]),
         "name": g["name"],
-        "icon": g.get("icon","💬"),
+        "icon": g.get("icon","\\U0001f4ac"),
         "description": g.get("description",""),
         "members": g.get("members",[]),
         "member_names": g.get("member_names",[]),
         "created_by": g.get("created_by",""),
         "created_by_name": g.get("created_by_name",""),
         "created_at": g["created_at"].isoformat() if hasattr(g.get("created_at"),"isoformat") else "",
-        "channel": f"group_{str(g['_id'])}",
+        "channel": f"group_{str(g[\\'_id\\'])}",
     }
 
-def check_channel_access(channel, uid, user):
+def check_access(channel, uid, user):
     if channel.startswith("dept_"):
         dept = channel.replace("dept_","").lower()
         if user.get("department","").lower() != dept and user.get("role") != "admin":
-            return False, "Forbidden"
+            return False
     if channel.startswith("group_"):
         gid = channel.replace("group_","")
         try:
             group = groups_col.find_one({"_id": ObjectId(gid)})
-            if not group: return False, "Group not found"
+            if not group: return False
             if uid not in group.get("members",[]) and user.get("role") != "admin":
-                return False, "Not a member"
+                return False
         except Exception:
-            return False, "Invalid group"
-    return True, None
-
-# ── Messages ─────────────────────────────────────────────────
+            return False
+    return True
 
 @chat_bp.route("/messages/<channel>", methods=["GET"])
 @jwt_required()
 def get_messages(channel):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
-    ok, err = check_channel_access(channel, uid, user)
-    if not ok: return jsonify({"error": err}), 403
+    if not check_access(channel, uid, user):
+        return jsonify({"error":"Forbidden"}), 403
     msgs = list(messages_col.find({"channel": channel}).sort("created_at",1).limit(300))
     return jsonify([serialize_msg(m) for m in msgs]), 200
 
@@ -74,21 +79,16 @@ def get_messages(channel):
 def send_message():
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
-    data = request.json
+    data = request.json or {}
     channel = data.get("channel","company")
-    ok, err = check_channel_access(channel, uid, user)
-    if not ok: return jsonify({"error": err}), 403
-
-    file_url = ""
-    file_name = ""
-    file_type = ""
-
-    # Handle file upload (base64 encoded)
+    if not check_access(channel, uid, user):
+        return jsonify({"error":"Forbidden"}), 403
+    file_url = file_name = file_type = ""
     if data.get("file_data"):
         b64 = data["file_data"]
         if "," in b64: b64 = b64.split(",",1)[1]
-        fname = re.sub(r'[^\w.\-]', '_', data.get("file_name","file"))
-        safe = f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}_{fname}"
+        fname = re.sub(r\'[^\\\\w.\\\\-]\', \'_\', data.get("file_name","file"))
+        safe = f"{datetime.datetime.utcnow().strftime(\'%Y%m%d%H%M%S%f\')}_{fname}"
         fpath = os.path.join(CHAT_UPLOAD_DIR, safe)
         try:
             raw = base64.b64decode(b64)
@@ -98,21 +98,15 @@ def send_message():
             file_type = data.get("file_type","application/octet-stream")
         except Exception as e:
             print(f"Chat upload error: {e}")
-
     msg = {
-        "sender_id": uid,
-        "sender_name": user["name"],
+        "sender_id": uid, "sender_name": user["name"],
         "sender_dept": user.get("department",""),
-        "channel": channel,
-        "text": data.get("text",""),
-        "file_url": file_url,
-        "file_name": file_name,
-        "file_type": file_type,
-        "edited": False,
-        "created_at": datetime.datetime.utcnow(),
+        "channel": channel, "text": data.get("text",""),
+        "file_url": file_url, "file_name": file_name, "file_type": file_type,
+        "edited": False, "created_at": datetime.datetime.utcnow(),
     }
-    result = messages_col.insert_one(msg)
-    msg["_id"] = result.inserted_id
+    r = messages_col.insert_one(msg)
+    msg["_id"] = r.inserted_id
     return jsonify(serialize_msg(msg)), 201
 
 @chat_bp.route("/messages/<msg_id>", methods=["PUT"])
@@ -121,9 +115,8 @@ def edit_message(msg_id):
     uid = get_jwt_identity()
     msg = messages_col.find_one({"_id": ObjectId(msg_id)})
     if not msg: return jsonify({"error":"Not found"}), 404
-    if msg.get("sender_id") != uid:
-        return jsonify({"error":"Forbidden"}), 403
-    data = request.json
+    if msg.get("sender_id") != uid: return jsonify({"error":"Forbidden"}), 403
+    data = request.json or {}
     messages_col.update_one({"_id": ObjectId(msg_id)}, {"$set":{"text": data.get("text",""), "edited": True}})
     return jsonify(serialize_msg(messages_col.find_one({"_id": ObjectId(msg_id)}))), 200
 
@@ -138,8 +131,6 @@ def delete_message(msg_id):
         return jsonify({"error":"Forbidden"}), 403
     messages_col.delete_one({"_id": ObjectId(msg_id)})
     return jsonify({"ok":True}), 200
-
-# ── Groups ───────────────────────────────────────────────────
 
 @chat_bp.route("/groups", methods=["GET"])
 @jwt_required()
@@ -159,7 +150,7 @@ def create_group():
     user = users_col.find_one({"_id": ObjectId(uid)})
     if user.get("role") != "admin":
         return jsonify({"error":"Only admin can create groups"}), 403
-    data = request.json
+    data = request.json or {}
     name = (data.get("name") or "").strip()
     if not name: return jsonify({"error":"Group name required"}), 400
     member_ids = data.get("members", [])
@@ -170,9 +161,13 @@ def create_group():
             u = users_col.find_one({"_id": ObjectId(mid)})
             if u: member_names.append(u["name"])
         except: pass
-    group = {"name":name,"icon":data.get("icon","💬"),"description":data.get("description",""),
-             "members":member_ids,"member_names":member_names,"created_by":uid,
-             "created_by_name":user["name"],"created_at":datetime.datetime.utcnow()}
+    group = {
+        "name": name, "icon": data.get("icon","\\U0001f4ac"),
+        "description": data.get("description",""),
+        "members": member_ids, "member_names": member_names,
+        "created_by": uid, "created_by_name": user["name"],
+        "created_at": datetime.datetime.utcnow(),
+    }
     r = groups_col.insert_one(group)
     group["_id"] = r.inserted_id
     return jsonify(serialize_group(group)), 201
@@ -183,9 +178,9 @@ def update_group(gid):
     uid = get_jwt_identity()
     user = users_col.find_one({"_id": ObjectId(uid)})
     if user.get("role") != "admin": return jsonify({"error":"Forbidden"}), 403
-    data = request.json
+    data = request.json or {}
     update = {}
-    for f in ["name","icon","description"]: 
+    for f in ["name","icon","description"]:
         if f in data: update[f] = data[f]
     if "members" in data:
         member_ids = data["members"]
@@ -226,3 +221,11 @@ def remove_member(gid, mid):
         except: pass
     groups_col.update_one({"_id": ObjectId(gid)}, {"$set": {"member_names": names}})
     return jsonify(serialize_group(groups_col.find_one({"_id": ObjectId(gid)}))), 200
+'''
+
+# Write the file
+with open(os.path.join(routes_dir, "chat.py"), "w") as f:
+    f.write(chat_py)
+
+print("chat.py patched successfully!")
+print("Now restart: python3 app.py")
